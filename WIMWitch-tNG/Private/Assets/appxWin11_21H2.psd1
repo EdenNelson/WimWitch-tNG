@@ -1,0 +1,22 @@
+@{
+    Packages = @(
+        'Microsoft.549981C3F5F10_2.2106.2807.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.BingNews_4.7.28001.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.BingWeather_4.9.2002.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.DesktopAppInstaller_2020.812.2125.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.GamingApp_2021.427.138.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.GetHelp_10.2008.32311.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.Getstarted_10.2.41172.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.HEIFImageExtension_1.0.40978.0_x64__8wekyb3d8bbwe',
+        'Microsoft.MicrosoftOfficeHub_18.2104.12721.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.MicrosoftSolitaireCollection_4.6.3102.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.MicrosoftStickyNotes_4.1.2.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.Paint_10.2104.17.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.People_2020.901.1724.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.PowerAutomateDesktop_10.0.561.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.ScreenSketch_2021.2104.2.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.SecHealthUI_1000.22000.1.0_neutral__8wekyb3d8bbwe',
+        'Microsoft.StorePurchaseApp_12008.1001.113.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.Todos_2.33.33351.0_neutral_~_8wekyb3d8bbwe'
+    )
+}

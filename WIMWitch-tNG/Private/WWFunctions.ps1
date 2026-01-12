@@ -224,10 +224,10 @@ Function Set-Logging {
     #logging folder
     if (!(Test-Path -Path "$global:workdir\logging\WIMWitch.Log" -PathType Leaf)) {
         New-Item -ItemType Directory -Force -Path "$global:workdir\Logging" | Out-Null
-        New-Item -Path "$global:workdir\logging" -Name 'WIMWitch.log' -ItemType 'file' -Value '***Logging Started***' | Out-Null
+        New-Item -Path "$global:workdir\logging" -Name 'WIMWitch-tNG.log' -ItemType 'file' -Value '***Logging Started***' | Out-Null
     } Else {
-        Remove-Item -Path "$global:workdir\logging\WIMWitch.log"
-        New-Item -Path "$global:workdir\logging" -Name 'WIMWitch.log' -ItemType 'file' -Value '***Logging Started***' | Out-Null
+        Remove-Item -Path "$global:workdir\logging\WIMWitch-tNG.log"
+        New-Item -Path "$global:workdir\logging" -Name 'WIMWitch-tNG.log' -ItemType 'file' -Value '***Logging Started***' | Out-Null
     }
 
 
@@ -945,11 +945,12 @@ Function Select-Appx {
         $OS = 'Win11'
     }
 
-    $appxListFile = Join-Path -Path $AssetsPath -ChildPath $("appx$OS" + '_' + "$buildnum.txt")
+    $appxListFile = Join-Path -Path $AssetsPath -ChildPath $("appx$OS" + '_' + "$buildnum.psd1")
     Update-Log -Data "Looking for Appx list file $appxListFile" -Class Information
 
     if (Test-Path $appxListFile) {
-        $appxPackages = Get-Content $appxListFile
+        $appxData = Import-PowerShellDataFile $appxListFile
+        $appxPackages = $appxData.Packages
         $exappxs = $appxPackages | Out-GridView -Title 'Select apps to remove' -PassThru
     } else {
         Write-Warning "No matching Appx list file found for build $buildnum."
@@ -1387,7 +1388,7 @@ function Show-ClosingText {
     Write-Host ' '
     Write-Host '##########################################################'
     Write-Host ' '
-    Write-Host 'Thank you for using WIMWitchFK.'
+    Write-Host 'Thank you for using WIMWitch-tNG.'
     Write-Host ' '
     Write-Host '##########################################################'
 }
@@ -1552,7 +1553,7 @@ Function Test-WorkingDirectory {
 
     $count = $null
     Set-Location -Path $global:workdir
-    Write-Output "WIMWitchFK working directory selected: $global:workdir"
+    Write-Output "WIMWitch-tNG working directory selected: $global:workdir"
     Write-Output 'Checking working directory for required folders...'
     foreach ($subfolder in $subfolders) {
         if ((Test-Path -Path .\$subfolder) -eq $true) { $count = $count + 1 }
@@ -5345,7 +5346,7 @@ Function Get-WinVersionNumber {
 
     # Latest 10 Windows 10 version checks
     switch -Regex ($WPFSourceWimVerTextBox.text) {
-        
+
         #Windows 10 version checks
         '10\.0\.19044\.\d+' { $buildnum = '21H2' }
         '10\.0\.19045\.\d+' { $buildnum = '22H2' }
@@ -6015,8 +6016,8 @@ Function Invoke-MakeItSo ($appx) {
     try {
         Update-Log -Data 'Attempting to copy log to mounted image' -Class Information
         $mountlogdir = $WPFMISMountTextBox.Text + '\windows\'
-        Copy-Item $global:workdir\logging\WIMWitch.log -Destination $mountlogdir -ErrorAction Stop
-        $CopyLogExist = Test-Path $mountlogdir\WIMWitch.log -PathType Leaf
+        Copy-Item $global:workdir\logging\WIMWitch-tNG.log -Destination $mountlogdir -ErrorAction Stop
+        $CopyLogExist = Test-Path $mountlogdir\WIMWitch-tNG.log -PathType Leaf
         if ($CopyLogExist -eq $true) { Update-Log -Data 'Log filed copied successfully' -Class Information }
     } catch {
         Update-Log -data $_.Exception.Message -class Error
@@ -6126,8 +6127,8 @@ Function Invoke-MakeItSo ($appx) {
     #Copy log here
     try {
         Update-Log -Data 'Copying build log to target folder' -Class Information
-        Copy-Item -Path $global:workdir\logging\WIMWitch.log -Destination $WPFMISWimFolderTextBox.Text -ErrorAction Stop
-        $logold = $WPFMISWimFolderTextBox.Text + '\WIMWitch.log'
+        Copy-Item -Path $global:workdir\logging\WIMWitch-tNG.log -Destination $WPFMISWimFolderTextBox.Text -ErrorAction Stop
+        $logold = $WPFMISWimFolderTextBox.Text + '\WIMWitch-tNG.log'
         $lognew = $WPFMISWimFolderTextBox.Text + '\' + $WPFMISWimNameTextBox.Text + '.log'
         #Put log detection code here
         if ((Test-Path -Path $lognew) -eq $true) {

@@ -1,0 +1,23 @@
+@{
+    Packages = @(
+        'Microsoft.549981C3F5F10_3.2204.14815.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.BingNews_4.2.27001.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.BingWeather_4.53.33420.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.DesktopAppInstaller_2022.310.2333.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.GamingApp_2021.427.138.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.GetHelp_10.2201.421.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.Getstarted_2021.2204.1.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.HEIFImageExtension_1.0.43012.0_x64__8wekyb3d8bbwe',
+        'Microsoft.HEVCVideoExtension_1.0.50361.0_x64__8wekyb3d8bbwe',
+        'Microsoft.MicrosoftOfficeHub_18.2204.1141.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.MicrosoftSolitaireCollection_4.12.3171.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.MicrosoftStickyNotes_4.2.2.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.Paint_11.2201.22.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.People_2020.901.1724.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.PowerAutomateDesktop_10.0.3735.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.RawImageExtension_2.1.30391.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.ScreenSketch_2022.2201.12.0_neutral_~_8wekyb3d8bbwe',
+        'Microsoft.SecHealthUI_1000.22621.1.0_x64__8wekyb3d8bbwe',
+        'Microsoft.StorePurchaseApp_12008.1001.113.0_neutral_~_8wekyb3d8bbwe'
+    )
+}

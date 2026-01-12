@@ -1,4 +1,4 @@
-# WimWitchFK
+# WIMWitch-tNG
 
 ![WIMWITCHFK](https://i.imgur.com/WGNLA48.png)
 
@@ -14,7 +14,7 @@ This a forked version of WimWitch by TheNotoriusDRR which was EOL'd in Jan 2023.
 
 - Refactored script into a PowerShell module.
 - Added Assets directory and moved appx removal definitions to text files to simplify function structure.
-- Added a WorkingDirectory parameter and refactored all functions to use it as WimWitchFK no longer installs itself due to module conversions.
+- Added a WorkingDirectory parameter and refactored all functions to use it as WIMWitch-tNG no longer installs itself due to module conversions.
 - Added new icon.
 
 ## 3.4.9
