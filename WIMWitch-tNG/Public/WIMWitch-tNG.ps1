@@ -1,6 +1,4 @@
-﻿Function WIMWitch-tNG {
-
-
+﻿Function Invoke-WIMWitch-tNG {
     #Requires -Version 5.0
     #Requires -Modules OSDSUS, OSDUpdate
     #-- Requires -ShellId <ShellId>
