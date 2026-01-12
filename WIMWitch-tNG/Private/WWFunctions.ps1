@@ -809,31 +809,34 @@ Function Deploy-LCU($packagepath) {
         }
     }
     if ($osver -eq 'Windows 11') {
-        # Copy file to staging
-        Update-Log -data 'Copying LCU file to staging folder...' -class information
-        $filename = (Get-ChildItem -Path $packagepath -Name)
-        Copy-Item -Path $packagepath\$filename -Destination $global:workdir\staging -Force
+        # Copy files to staging and apply
+        Update-Log -data 'Copying LCU file(s) to staging folder...' -class information
+        $filenames = @(Get-ChildItem -Path $packagepath -Name)
 
-        Update-Log -data 'Changing file extension type from CAB to MSU...' -class information
-        $basename = (Get-Item -Path $global:workdir\staging\$filename).BaseName
-        $newname = $basename + '.msu'
-        Rename-Item -Path $global:workdir\staging\$filename -NewName $newname
+        foreach ($filename in $filenames) {
+            Copy-Item -Path $packagepath\$filename -Destination $global:workdir\staging -Force
 
-        Update-Log -data 'Applying LCU...' -class information
-        Update-Log -data $global:workdir\staging\$newname -class information
-        $updatename = (Get-Item -Path $packagepath).name
-        Update-Log -data $updatename -Class Information
+            Update-Log -data 'Changing file extension type from CAB to MSU...' -class information
+            $basename = (Get-Item -Path $global:workdir\staging\$filename).BaseName
+            $newname = $basename + '.msu'
+            Rename-Item -Path $global:workdir\staging\$filename -NewName $newname
 
-        try {
-            if ($demomode -eq $false) {
-                Add-WindowsPackage -Path $WPFMISMountTextBox.Text -PackagePath $global:workdir\staging\$newname -ErrorAction Stop | Out-Null
-            } else {
-                $string = 'Demo mode active - Not applying ' + $updatename
-                Update-Log -data $string -Class Warning
+            Update-Log -data 'Applying LCU...' -class information
+            Update-Log -data $global:workdir\staging\$newname -class information
+            $updatename = (Get-Item -Path $packagepath\$filename).name
+            Update-Log -data $updatename -Class Information
+
+            try {
+                if ($demomode -eq $false) {
+                    Add-WindowsPackage -Path $WPFMISMountTextBox.Text -PackagePath $global:workdir\staging\$newname -ErrorAction Stop | Out-Null
+                } else {
+                    $string = 'Demo mode active - Not applying ' + $updatename
+                    Update-Log -data $string -Class Warning
+                }
+            } catch {
+                Update-Log -data 'Failed to apply update' -class Warning
+                Update-Log -data $_.Exception.Message -class Warning
             }
-        } catch {
-            Update-Log -data 'Failed to apply update' -class Warning
-            Update-Log -data $_.Exception.Message -class Warning
         }
 
 
@@ -4512,44 +4515,49 @@ Function Invoke-MSUpdateItemDownload {
                 # Get the content files associated with current Content ID
                 $UpdateItemContent = Get-WmiObject -Namespace "root\SMS\Site_$($global:SiteCode)" -Class SMS_CIContentFiles -ComputerName $global:SiteServer -Filter "ContentID = $($UpdateItemContentID.ContentID)" -ErrorAction Stop
                 if ($null -ne $UpdateItemContent) {
-                    # Create new custom object for the update content
-                    #write-host $UpdateItemContent.filename
-                    $PSObject = [PSCustomObject]@{
-                        'DisplayName' = $UpdateItem.LocalizedDisplayName
-                        'ArticleID'   = $UpdateItem.ArticleID
-                        'FileName'    = $UpdateItemContent.filename
-                        'SourceURL'   = $UpdateItemContent.SourceURL
-                        'DateRevised' = [System.Management.ManagementDateTimeConverter]::ToDateTime($UpdateItem.DateRevised)
-                    }
+                    # Handle both single object and array of objects
+                    $UpdateItemContentArray = @($UpdateItemContent)
 
-                    $variable = $FilePath + $UpdateClass + '\' + $UpdateName
+                    foreach ($ContentItem in $UpdateItemContentArray) {
+                        # Create new custom object for the update content
+                        #write-host $ContentItem.filename
+                        $PSObject = [PSCustomObject]@{
+                            'DisplayName' = $UpdateItem.LocalizedDisplayName
+                            'ArticleID'   = $UpdateItem.ArticleID
+                            'FileName'    = $ContentItem.filename
+                            'SourceURL'   = $ContentItem.SourceURL
+                            'DateRevised' = [System.Management.ManagementDateTimeConverter]::ToDateTime($UpdateItem.DateRevised)
+                        }
 
-                    if ((Test-Path -Path $variable) -eq $false) {
-                        Update-Log -Data "Creating folder $variable" -Class Information
-                        New-Item -Path $variable -ItemType Directory | Out-Null
-                        Update-Log -data 'Created folder' -Class Information
-                    } else {
+                        $variable = $FilePath + $UpdateClass + '\' + $UpdateName
+
+                        if ((Test-Path -Path $variable) -eq $false) {
+                            Update-Log -Data "Creating folder $variable" -Class Information
+                            New-Item -Path $variable -ItemType Directory | Out-Null
+                            Update-Log -data 'Created folder' -Class Information
+                        }
+
                         $testpath = $variable + '\' + $PSObject.FileName
 
                         if ((Test-Path -Path $testpath) -eq $true) {
-                            Update-Log -Data 'Update already exists. Skipping the download...' -Class Information
-                            return
+                            Update-Log -Data "Update item already exists. Skipping download of: $($PSObject.FileName)" -Class Information
+                            continue
                         }
-                    }
 
-                    try {
-                        Update-Log -Data "Downloading update item content from: $($PSObject.SourceURL)" -Class Information
+                        try {
+                            Update-Log -Data "Downloading update item content from: $($PSObject.SourceURL)" -Class Information
 
-                        $DNLDPath = $variable + '\' + $PSObject.FileName
+                            $DNLDPath = $variable + '\' + $PSObject.FileName
 
-                        $WebClient = New-Object -TypeName System.Net.WebClient
-                        $WebClient.DownloadFile($PSObject.SourceURL, $DNLDPath)
+                            $WebClient = New-Object -TypeName System.Net.WebClient
+                            $WebClient.DownloadFile($PSObject.SourceURL, $DNLDPath)
 
-                        Update-Log -Data "Download completed successfully, renamed file to: $($PSObject.FileName)" -Class Information
-                        $ReturnValue = 0
-                    } catch [System.Exception] {
-                        Update-Log -data "Unable to download update item content. Error message: $($_.Exception.Message)" -Class Error
-                        $ReturnValue = 1
+                            Update-Log -Data "Download completed successfully, file: $($PSObject.FileName)" -Class Information
+                            $ReturnValue = 0
+                        } catch [System.Exception] {
+                            Update-Log -data "Unable to download update item content. Error message: $($_.Exception.Message)" -Class Error
+                            $ReturnValue = 1
+                        }
                     }
                 } else {
                     Update-Log -data "Unable to determine update content instance for CI_ID: $($UpdateItemContentID.ContentID)" -Class Error
