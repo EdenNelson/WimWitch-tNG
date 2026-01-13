@@ -624,42 +624,6 @@ Function Update-PatchSource {
                 Test-Superceded -action delete -build 22H2 -OS 'Windows 10'
                 Get-WindowsPatches -build 22H2 -OS 'Windows 10'
             }
-            if ($WPFUpdatesW10_21H2.IsChecked -eq $true) {
-                Test-Superceded -action delete -build 21H2 -OS 'Windows 10'
-                Get-WindowsPatches -build 21H2 -OS 'Windows 10'
-            }
-            if ($WPFUpdatesW10_21H1.IsChecked -eq $true) {
-                Test-Superceded -action delete -build 21H1 -OS 'Windows 10'
-                Get-WindowsPatches -build 21H1 -OS 'Windows 10'
-            }
-            if ($WPFUpdatesW10_20H2.IsChecked -eq $true) {
-                Test-Superceded -action delete -build 20H2 -OS 'Windows 10'
-                Get-WindowsPatches -build 20H2 -OS 'Windows 10'
-            }
-            if ($WPFUpdatesW10_2004.IsChecked -eq $true) {
-                Test-Superceded -action delete -build 2004 -OS 'Windows 10'
-                Get-WindowsPatches -build 2004 -OS 'Windows 10'
-            }
-            if ($WPFUpdatesW10_1909.IsChecked -eq $true) {
-                Test-Superceded -action delete -build 1909 -OS 'Windows 10'
-                Get-WindowsPatches -build 1909 -OS 'Windows 10'
-            }
-            if ($WPFUpdatesW10_1903.IsChecked -eq $true) {
-                Test-Superceded -action delete -build 1903 -OS 'Windows 10'
-                Get-WindowsPatches -build 1903 -OS 'Windows 10'
-            }
-            if ($WPFUpdatesW10_1809.IsChecked -eq $true) {
-                Test-Superceded -action delete -build 1809 -OS 'Windows 10'
-                Get-WindowsPatches -build 1809 -OS 'Windows 10'
-            }
-            if ($WPFUpdatesW10_1803.IsChecked -eq $true) {
-                Test-Superceded -action delete -build 1803 -OS 'Windows 10'
-                Get-WindowsPatches -build 1803 -OS 'Windows 10'
-            }
-            if ($WPFUpdatesW10_1709.IsChecked -eq $true) {
-                Test-Superceded -action delete -build 1709 -OS 'Windows 10'
-                Get-WindowsPatches -build 1709 -OS 'Windows 10'
-            }
         }
         if ($WPFUpdatesS2019.IsChecked -eq $true) {
             Test-Superceded -action delete -build 1809 -OS 'Windows Server'
@@ -675,19 +639,20 @@ Function Update-PatchSource {
         }
 
         if ($WPFUpdatesW11Main.IsChecked -eq $true) {
-            if ($WPFUpdatesW11_22H2.IsChecked -eq $true) {
-                Test-Superceded -action delete -build 22H2 -OS 'Windows 11'
-                Get-WindowsPatches -build 22H2 -OS 'Windows 11'
-            }
-            if ($WPFUpdatesW11_21h2.IsChecked -eq $true) {
-                Write-Host '21H2'
-                Test-Superceded -action delete -build 21H2 -OS 'Windows 11'
-                Get-WindowsPatches -build 21H2 -OS 'Windows 11'
-            }
             if ($WPFUpdatesW11_23h2.IsChecked -eq $true) {
                 Write-Host '23H2'
                 Test-Superceded -action delete -build 23H2 -OS 'Windows 11'
                 Get-WindowsPatches -build 23H2 -OS 'Windows 11'
+            }
+            if ($WPFUpdatesW11_24h2.IsChecked -eq $true) {
+                Write-Host '24H2'
+                Test-Superceded -action delete -build 24H2 -OS 'Windows 11'
+                Get-WindowsPatches -build 24H2 -OS 'Windows 11'
+            }
+            if ($WPFUpdatesW11_25h2.IsChecked -eq $true) {
+                Write-Host '25H2'
+                Test-Superceded -action delete -build 25H2 -OS 'Windows 11'
+                Get-WindowsPatches -build 25H2 -OS 'Windows 11'
             }
 
         }
@@ -699,42 +664,6 @@ Function Update-PatchSource {
             if ($WPFUpdatesW10_22H2.IsChecked -eq $true) {
                 Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver '22H2'
                 Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -ver '22H2'
-            }
-            if ($WPFUpdatesW10_21H2.IsChecked -eq $true) {
-                Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver '21H2'
-                Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -ver '21H2'
-            }
-            if ($WPFUpdatesW10_21H1.IsChecked -eq $true) {
-                Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver '21H1'
-                Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -ver '21H1'
-            }
-            if ($WPFUpdatesW10_20H2.IsChecked -eq $true) {
-                Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver '20H2'
-                Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -ver '20H2'
-            }
-            if ($WPFUpdatesW10_2004.IsChecked -eq $true) {
-                Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver '2004'
-                Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -ver '2004'
-            }
-            if ($WPFUpdatesW10_1909.IsChecked -eq $true) {
-                Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver '1909'
-                Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -ver '1909'
-            }
-            if ($WPFUpdatesW10_1903.IsChecked -eq $true) {
-                Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver '1903'
-                Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -ver '1903'
-            }
-            if ($WPFUpdatesW10_1809.IsChecked -eq $true) {
-                Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver '1809'
-                Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -ver '1809'
-            }
-            if ($WPFUpdatesW10_1803.IsChecked -eq $true) {
-                Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver '1803'
-                Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -ver '1803'
-            }
-            if ($WPFUpdatesW10_1709.IsChecked -eq $true) {
-                Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver '1709'
-                Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -ver '1709'
             }
             #Get-OneDrive
         }
@@ -751,17 +680,17 @@ Function Update-PatchSource {
             Invoke-MEMCMUpdatecatalog -prod 'Windows Server' -Ver '21H2'
         }
         if ($WPFUpdatesW11Main.IsChecked -eq $true) {
-            if ($WPFUpdatesW11_21H2.IsChecked -eq $true) {
-                Invoke-MEMCMUpdateSupersedence -prod 'Windows 11' -Ver '21H2'
-                Invoke-MEMCMUpdatecatalog -prod 'Windows 11' -ver '21H2'
-            }
-            if ($WPFUpdatesW11_22H2.IsChecked -eq $true) {
-                Invoke-MEMCMUpdateSupersedence -prod 'Windows 11' -Ver '22H2'
-                Invoke-MEMCMUpdatecatalog -prod 'Windows 11' -ver '22H2'
-            }
             if ($WPFUpdatesW11_23H2.IsChecked -eq $true) {
                 Invoke-MEMCMUpdateSupersedence -prod 'Windows 11' -Ver '23H2'
                 Invoke-MEMCMUpdatecatalog -prod 'Windows 11' -ver '23H2'
+            }
+            if ($WPFUpdatesW11_24H2.IsChecked -eq $true) {
+                Invoke-MEMCMUpdateSupersedence -prod 'Windows 11' -Ver '24H2'
+                Invoke-MEMCMUpdatecatalog -prod 'Windows 11' -ver '24H2'
+            }
+            if ($WPFUpdatesW11_25H2.IsChecked -eq $true) {
+                Invoke-MEMCMUpdateSupersedence -prod 'Windows 11' -Ver '25H2'
+                Invoke-MEMCMUpdatecatalog -prod 'Windows 11' -ver '25H2'
             }
         }
         Get-OneDrive
@@ -1597,6 +1526,31 @@ Function Select-WorkingDirectory {
     return $selectWorkingDirectory.SelectedPath
 }
 
+Function Repair-MountPoint {
+    param(
+        [bool]$AutoFix = $false
+    )
+
+    $MountPath = Join-Path -Path $global:workdir -ChildPath 'Mount'
+
+    Update-Log -Data "Checking mount point: $MountPath" -Class Information
+
+    # Check if mount path exists
+    if (-not (Test-Path $MountPath)) {
+        Update-Log -Data "Mount path does not exist. Creating directory." -Class Information
+        New-Item -ItemType Directory -Path $MountPath -Force | Out-Null
+        return
+    }
+
+    # Check if anything is mounted
+    $MountedImages = Get-WindowsImage -Mounted 2>$null | Where-Object { $_.ImagePath -like "*$MountPath*" }
+
+    if ($MountedImages) {
+        Update-Log -Data "Found mounted images at $MountPath" -Class Warning
+
+        if ($AutoFix) {
+            Update-Log -Data "AutoFix enabled - dismounting images..." -Class Information
+            foreach ($image in $MountedImages) {
                 try {
                     Dismount-WindowsImage -Path $image.Path -Discard | Out-Null
                     Update-Log -Data "Dismounted: $($image.Path)" -Class Information
@@ -6244,4 +6198,4 @@ Function Invoke-MakeItSo ($appx) {
     Update-Log -Data "Job's done." -Class Information
 }
 
-#endregion Functions
+#endregion Function
