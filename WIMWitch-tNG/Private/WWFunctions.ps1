@@ -1597,17 +1597,92 @@ Function Select-WorkingDirectory {
     return $selectWorkingDirectory.SelectedPath
 }
 
+                try {
+                    Dismount-WindowsImage -Path $image.Path -Discard | Out-Null
+                    Update-Log -Data "Dismounted: $($image.Path)" -Class Information
+                } catch {
+                    Update-Log -Data "Failed to dismount $($image.Path): $($_.Exception.Message)" -Class Error
+                }
+            }
+        } else {
+            Write-Host "Mounted images found in $MountPath" -ForegroundColor Yellow
+            Write-Host "Options:"
+            Write-Host "  1) Dismount all images"
+            Write-Host "  2) Purge mount directory (force)"
+            Write-Host "  3) Continue anyway"
+
+            $choice = Read-Host "Select option (1-3)"
+
+            switch ($choice) {
+                '1' {
+                    foreach ($image in $MountedImages) {
+                        try {
+                            Dismount-WindowsImage -Path $image.Path -Discard | Out-Null
+                            Update-Log -Data "Dismounted: $($image.Path)" -Class Information
+                        } catch {
+                            Update-Log -Data "Failed to dismount: $($_.Exception.Message)" -Class Error
+                        }
+                    }
+                }
+                '2' {
+                    try {
+                        Remove-Item -Path $MountPath -Recurse -Force
+                        New-Item -ItemType Directory -Path $MountPath -Force | Out-Null
+                        Update-Log -Data "Mount directory purged and recreated" -Class Information
+                    } catch {
+                        Update-Log -Data "Failed to purge mount directory: $($_.Exception.Message)" -Class Error
+                    }
+                }
+                '3' {
+                    Update-Log -Data "User chose to continue with mounted images" -Class Warning
+                }
+            }
+        }
+    }
+
+    # Check for orphaned content
+    $MountContent = Get-ChildItem -Path $MountPath -ErrorAction SilentlyContinue | Measure-Object
+
+    if ($MountContent.Count -gt 0) {
+        Update-Log -Data "Mount directory contains $($MountContent.Count) items" -Class Warning
+
+        if ($AutoFix) {
+            Update-Log -Data "AutoFix enabled - purging mount directory..." -Class Information
+            try {
+                Remove-Item -Path $MountPath\* -Recurse -Force -ErrorAction Stop
+                Update-Log -Data "Mount directory purged" -Class Information
+            } catch {
+                Update-Log -Data "Failed to purge mount directory: $($_.Exception.Message)" -Class Error
+            }
+        } else {
+            Write-Host "Mount directory contains orphaned content" -ForegroundColor Yellow
+            $purge = Read-Host "Purge mount directory? (Y/N)"
+
+            if ($purge -eq 'Y' -or $purge -eq 'y') {
+                try {
+                    Remove-Item -Path $MountPath\* -Recurse -Force -ErrorAction Stop
+                    Update-Log -Data "Mount directory purged" -Class Information
+                } catch {
+                    Update-Log -Data "Failed to purge: $($_.Exception.Message)" -Class Error
+                }
+            }
+        }
+    }
+
+    Update-Log -Data "Mount point check complete" -Class Information
+}
+
 Function Set-Version($wimversion) {
-    if (($wimversion -eq '10.0.22621.2428') -or ($wimversion -like '10.0.22631.*')) { $version = '23H2' }
+    if ($wimversion -like '10.0.22631.*') { $version = '23H2' }
+    elseif ($wimversion -like '10.0.26100.*') { $version = '24H2' }
+    elseif ($wimversion -like '10.0.26200.*') { $version = '25H2' }
     elseif ($wimversion -like '10.0.16299.*') { $version = '1709' }
     elseif ($wimversion -like '10.0.17134.*') { $version = '1803' }
     elseif ($wimversion -like '10.0.17763.*') { $version = '1809' }
     elseif ($wimversion -like '10.0.18362.*') { $version = '1909' }
     elseif ($wimversion -like '10.0.14393.*') { $version = '1607' }
     elseif ($wimversion -like '10.0.19041.*') { $version = '2004' }
-    elseif ($wimversion -like '10.0.22000.*') { $version = '21H2' }
     elseif ($wimversion -like '10.0.20348.*') { $version = '21H2' }
-    elseif ($wimversion -like '10.0.22621.*') { $version = '22H2' }
     else { $version = 'Unknown' }
     return $version
 }
@@ -4147,120 +4222,127 @@ Function Get-ImageInfo {
 
 
     #set-ConfigMgrConnection
-    Set-Location $CMDrive
-    $image = (Get-WmiObject -Namespace "root\SMS\Site_$($global:SiteCode)" -Class SMS_ImagePackage -ComputerName $global:SiteServer) | Where-Object { ($_.PackageID -eq $PackID) }
+    Push-Location $CMDrive
+    try {
+        $image = (Get-WmiObject -Namespace "root\SMS\Site_$($global:SiteCode)" -Class SMS_ImagePackage -ComputerName $global:SiteServer) | Where-Object { ($_.PackageID -eq $PackID) }
 
-    $WPFCMTBImageName.text = $image.name
-    $WPFCMTBWinBuildNum.text = $image.ImageOSversion
-    $WPFCMTBPackageID.text = $image.PackageID
-    $WPFCMTBImageVer.text = $image.version
-    $WPFCMTBDescription.text = $image.Description
+        $WPFCMTBImageName.text = $image.name
+        $WPFCMTBWinBuildNum.text = $image.ImageOSversion
+        $WPFCMTBPackageID.text = $image.PackageID
+        $WPFCMTBImageVer.text = $image.version
+        $WPFCMTBDescription.text = $image.Description
 
-    $text = 'Image ' + $WPFCMTBImageName.text + ' selected'
-    Update-Log -data $text -class Information
+        $text = 'Image ' + $WPFCMTBImageName.text + ' selected'
+        Update-Log -data $text -class Information
 
-    $text = 'Package ID is ' + $image.PackageID
-    Update-Log -data $text -class Information
+        $text = 'Package ID is ' + $image.PackageID
+        Update-Log -data $text -class Information
 
-    $text = 'Image build number is ' + $image.ImageOSversion
-    Update-Log -data $text -class Information
+        $text = 'Image build number is ' + $image.ImageOSversion
+        Update-Log -data $text -class Information
 
-    $packageID = (Get-CMOperatingSystemImage -Id $image.PackageID)
-    # $packageID.PkgSourcePath
+        $packageID = (Get-CMOperatingSystemImage -Id $image.PackageID)
+        # $packageID.PkgSourcePath
 
-    $WPFMISWimFolderTextBox.text = (Split-Path -Path $packageID.PkgSourcePath)
-    $WPFMISWimNameTextBox.text = (Split-Path -Path $packageID.PkgSourcePath -Leaf)
+        $WPFMISWimFolderTextBox.text = (Split-Path -Path $packageID.PkgSourcePath)
+        $WPFMISWimNameTextBox.text = (Split-Path -Path $packageID.PkgSourcePath -Leaf)
 
-    $Package = $packageID.PackageID
-    $DPs = Get-CMDistributionPoint
-    $NALPaths = (Get-WmiObject -Namespace "root\SMS\Site_$($global:SiteCode)" -ComputerName $global:SiteServer -Query "SELECT * FROM SMS_DistributionPoint WHERE PackageID='$Package'")
+        $Package = $packageID.PackageID
+        $DPs = Get-CMDistributionPoint
+        $NALPaths = (Get-WmiObject -Namespace "root\SMS\Site_$($global:SiteCode)" -ComputerName $global:SiteServer -Query "SELECT * FROM SMS_DistributionPoint WHERE PackageID='$Package'")
 
-    Update-Log -Data 'Retrieving Distrbution Point Information' -Class Information
-    foreach ($NALPath in $NALPaths) {
-        foreach ($dp in $dps) {
-            $DPPath = $dp.NetworkOSPath
-            if ($NALPath.ServerNALPath -like ("*$DPPath*")) {
-                Update-Log -data "Image has been previously distributed to $DPPath" -class Information
-                $WPFCMLBDPs.Items.Add($DPPath)
+        Update-Log -Data 'Retrieving Distrbution Point Information' -Class Information
+        foreach ($NALPath in $NALPaths) {
+            foreach ($dp in $dps) {
+                $DPPath = $dp.NetworkOSPath
+                if ($NALPath.ServerNALPath -like ("*$DPPath*")) {
+                    Update-Log -data "Image has been previously distributed to $DPPath" -class Information
+                    $WPFCMLBDPs.Items.Add($DPPath)
 
+                }
             }
         }
+
+        #Detect Binary Diff Replication
+        Update-Log -data 'Checking Binary Differential Replication setting' -Class Information
+        if ($image.PkgFlags -eq ($image.PkgFlags -bor 0x04000000)) {
+            $WPFCMCBBinDirRep.IsChecked = $True
+        } else {
+            $WPFCMCBBinDirRep.IsChecked = $False
+        }
+
+        #Detect Package Share Enabled
+        Update-Log -data 'Checking package share settings' -Class Information
+        if ($image.PkgFlags -eq ($image.PkgFlags -bor 0x80)) {
+            $WPFCMCBDeploymentShare.IsChecked = $true
+        } else
+        { $WPFCMCBDeploymentShare.IsChecked = $false }
+    } finally {
+        Pop-Location
     }
-
-    #Detect Binary Diff Replication
-    Update-Log -data 'Checking Binary Differential Replication setting' -Class Information
-    if ($image.PkgFlags -eq ($image.PkgFlags -bor 0x04000000)) {
-        $WPFCMCBBinDirRep.IsChecked = $True
-    } else {
-        $WPFCMCBBinDirRep.IsChecked = $False
-    }
-
-    #Detect Package Share Enabled
-    Update-Log -data 'Checking package share settings' -Class Information
-    if ($image.PkgFlags -eq ($image.PkgFlags -bor 0x80)) {
-        $WPFCMCBDeploymentShare.IsChecked = $true
-    } else
-    { $WPFCMCBDeploymentShare.IsChecked = $false }
-
-    Set-Location $global:workdir
 }
 
 #Function to select DP's from ConfigMgr
 Function Select-DistributionPoints {
     #set-ConfigMgrConnection
-    Set-Location $CMDrive
+    Push-Location $CMDrive
+    try {
+        if ($WPFCMCBDPDPG.SelectedItem -eq 'Distribution Points') {
 
-    if ($WPFCMCBDPDPG.SelectedItem -eq 'Distribution Points') {
-
-        $SelectedDPs = (Get-CMDistributionPoint -SiteCode $global:sitecode).NetworkOSPath | Out-GridView -Title 'Select Distribution Points' -PassThru
-        foreach ($SelectedDP in $SelectedDPs) { $WPFCMLBDPs.Items.Add($SelectedDP) }
+            $SelectedDPs = (Get-CMDistributionPoint -SiteCode $global:sitecode).NetworkOSPath | Out-GridView -Title 'Select Distribution Points' -PassThru
+            foreach ($SelectedDP in $SelectedDPs) { $WPFCMLBDPs.Items.Add($SelectedDP) }
+        }
+        if ($WPFCMCBDPDPG.SelectedItem -eq 'Distribution Point Groups') {
+            $SelectedDPs = (Get-CMDistributionPointGroup).Name | Out-GridView -Title 'Select Distribution Point Groups' -PassThru
+            foreach ($SelectedDP in $SelectedDPs) { $WPFCMLBDPs.Items.Add($SelectedDP) }
+        }
+    } finally {
+        Pop-Location
     }
-    if ($WPFCMCBDPDPG.SelectedItem -eq 'Distribution Point Groups') {
-        $SelectedDPs = (Get-CMDistributionPointGroup).Name | Out-GridView -Title 'Select Distribution Point Groups' -PassThru
-        foreach ($SelectedDP in $SelectedDPs) { $WPFCMLBDPs.Items.Add($SelectedDP) }
-    }
-    Set-Location $global:workdir
 }
 
 #Function to create the new image in ConfigMgr
 Function New-CMImagePackage {
     #set-ConfigMgrConnection
-    Set-Location $CMDrive
-    $Path = $WPFMISWimFolderTextBox.text + '\' + $WPFMISWimNameTextBox.text
-
+    Push-Location $CMDrive
     try {
-        New-CMOperatingSystemImage -Name $WPFCMTBImageName.text -Path $Path -ErrorAction Stop
-        Update-Log -data 'Image was created. Check ConfigMgr console' -Class Information
-    } catch {
-        Update-Log -data 'Failed to create the image' -Class Error
-        Update-Log -data $_.Exception.Message -Class Error
-    }
+        $Path = $WPFMISWimFolderTextBox.text + '\' + $WPFMISWimNameTextBox.text
 
-    $PackageID = (Get-CMOperatingSystemImage -Name $WPFCMTBImageName.text).PackageID
-    Update-Log -Data "The Package ID of the new image is $PackageID" -Class Information
-
-    Set-ImageProperties -PackageID $PackageID
-
-    Update-Log -Data 'Retriveing Distribution Point information...' -Class Information
-    $DPs = $WPFCMLBDPs.Items
-
-    foreach ($DP in $DPs) {
-        # Hello! This line was written on 3/3/2020.
-        $DP = $DP -replace '\\', ''
-
-        Update-Log -Data 'Distributiong image package content...' -Class Information
-        if ($WPFCMCBDPDPG.SelectedItem -eq 'Distribution Points') {
-            Start-CMContentDistribution -OperatingSystemImageId $PackageID -DistributionPointName $DP
-        }
-        if ($WPFCMCBDPDPG.SelectedItem -eq 'Distribution Point Groups') {
-            Start-CMContentDistribution -OperatingSystemImageId $PackageID -DistributionPointGroupName $DP
+        try {
+            New-CMOperatingSystemImage -Name $WPFCMTBImageName.text -Path $Path -ErrorAction Stop
+            Update-Log -data 'Image was created. Check ConfigMgr console' -Class Information
+        } catch {
+            Update-Log -data 'Failed to create the image' -Class Error
+            Update-Log -data $_.Exception.Message -Class Error
         }
 
-        Update-Log -Data 'Content has been distributed.' -Class Information
-    }
+        $PackageID = (Get-CMOperatingSystemImage -Name $WPFCMTBImageName.text).PackageID
+        Update-Log -Data "The Package ID of the new image is $PackageID" -Class Information
 
-    Save-Configuration -CM $PackageID
-    Set-Location $global:workdir
+        Set-ImageProperties -PackageID $PackageID
+
+        Update-Log -Data 'Retriveing Distribution Point information...' -Class Information
+        $DPs = $WPFCMLBDPs.Items
+
+        foreach ($DP in $DPs) {
+            # Hello! This line was written on 3/3/2020.
+            $DP = $DP -replace '\\', ''
+
+            Update-Log -Data 'Distributiong image package content...' -Class Information
+            if ($WPFCMCBDPDPG.SelectedItem -eq 'Distribution Points') {
+                Start-CMContentDistribution -OperatingSystemImageId $PackageID -DistributionPointName $DP
+            }
+            if ($WPFCMCBDPDPG.SelectedItem -eq 'Distribution Point Groups') {
+                Start-CMContentDistribution -OperatingSystemImageId $PackageID -DistributionPointGroupName $DP
+            }
+
+            Update-Log -Data 'Content has been distributed.' -Class Information
+        }
+
+        Save-Configuration -CM $PackageID
+    } finally {
+        Pop-Location
+    }
 }
 
 #Function to enable/disable options on ConfigMgr tab
@@ -4346,21 +4428,23 @@ Function Enable-ConfigMgrOptions {
 #Function to update DP's when updating existing image file in ConfigMgr
 Function Update-CMImage {
     #set-ConfigMgrConnection
-    Set-Location $CMDrive
-    $wmi = (Get-WmiObject -Namespace "root\SMS\Site_$($global:SiteCode)" -Class SMS_ImagePackage -ComputerName $global:SiteServer) | Where-Object { $_.PackageID -eq $WPFCMTBPackageID.text }
+    Push-Location $CMDrive
+    try {
+        $wmi = (Get-WmiObject -Namespace "root\SMS\Site_$($global:SiteCode)" -Class SMS_ImagePackage -ComputerName $global:SiteServer) | Where-Object { $_.PackageID -eq $WPFCMTBPackageID.text }
 
 
 
-    Update-Log -Data 'Updating images on the Distribution Points...'
-    $WMI.RefreshPkgSource() | Out-Null
+        Update-Log -Data 'Updating images on the Distribution Points...'
+        $WMI.RefreshPkgSource() | Out-Null
 
-    Update-Log -Data 'Refreshing image proprties from the WIM' -Class Information
-    $WMI.ReloadImageProperties() | Out-Null
+        Update-Log -Data 'Refreshing image proprties from the WIM' -Class Information
+        $WMI.ReloadImageProperties() | Out-Null
 
-    Set-ImageProperties -PackageID $WPFCMTBPackageID.Text
-    Save-Configuration -CM -filename $WPFCMTBPackageID.Text
-
-    Set-Location $global:workdir
+        Set-ImageProperties -PackageID $WPFCMTBPackageID.Text
+        Save-Configuration -CM -filename $WPFCMTBPackageID.Text
+    } finally {
+        Pop-Location
+    }
 }
 
 #Function to enable disable & options on the Software Update Catalog tab
@@ -4582,34 +4666,35 @@ Function Invoke-MSUpdateItemDownload {
 Function Invoke-MEMCMUpdatecatalog($prod, $ver) {
 
     #set-ConfigMgrConnection
-    Set-Location $CMDrive
-    $Arch = 'x64'
+    Push-Location $CMDrive
+    try {
+        $Arch = 'x64'
 
-    if ($prod -eq 'Windows 10') {
-        #        if (($ver -ge '1903') -or ($ver -eq "21H1")){$WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows 10, version 1903 and later'"}
-        #        if (($ver -ge '1903') -or ($ver -eq "21H1") -or ($ver -eq "20H2") -or ($ver -eq "21H2") -or ($ver -eq "22H2")){$WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows 10, version 1903 and later'"}
-        #here
-        if (($ver -ge '1903') -or ($ver -like '2*')) { $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows 10, version 1903 and later'" }
-
-
-        if ($ver -le '1809') { $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows 10'" }
-
-        $Updates = (Get-WmiObject -Namespace "root\SMS\Site_$($global:SiteCode)" -Class SMS_SoftwareUpdate -ComputerName $global:SiteServer -Filter $WMIQueryFilter -ErrorAction Stop | Where-Object { ($_.IsSuperseded -eq $false) -and ($_.LocalizedDisplayName -like "*$($ver)*$($Arch)*") } )
-    }
+        if ($prod -eq 'Windows 10') {
+            #        if (($ver -ge '1903') -or ($ver -eq "21H1")){$WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows 10, version 1903 and later'"}
+            #        if (($ver -ge '1903') -or ($ver -eq "21H1") -or ($ver -eq "20H2") -or ($ver -eq "21H2") -or ($ver -eq "22H2")){$WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows 10, version 1903 and later'"}
+            #here
+            if (($ver -ge '1903') -or ($ver -like '2*')) { $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows 10, version 1903 and later'" }
 
 
-    if (($prod -like '*Windows Server*') -and ($ver -eq '1607')) {
-        $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows Server 2016'"
-        $Updates = (Get-WmiObject -Namespace "root\SMS\Site_$($global:SiteCode)" -Class SMS_SoftwareUpdate -ComputerName $global:SiteServer -Filter $WMIQueryFilter -ErrorAction Stop | Where-Object { ($_.IsSuperseded -eq $false) -and ($_.LocalizedDisplayName -notlike '* Next *') -and ($_.LocalizedDisplayName -notlike '*(1703)*') -and ($_.LocalizedDisplayName -notlike '*(1709)*') -and ($_.LocalizedDisplayName -notlike '*(1803)*') })
-    }
+            if ($ver -le '1809') { $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows 10'" }
 
-    if (($prod -like '*Windows Server*') -and ($ver -eq '1809')) {
-        $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows Server 2019'"
-        $Updates = (Get-WmiObject -Namespace "root\SMS\Site_$($global:SiteCode)" -Class SMS_SoftwareUpdate -ComputerName $global:SiteServer -Filter $WMIQueryFilter -ErrorAction Stop | Where-Object { ($_.IsSuperseded -eq $false) -and ($_.LocalizedDisplayName -like "*$($Arch)*") } )
-    }
+            $Updates = (Get-WmiObject -Namespace "root\SMS\Site_$($global:SiteCode)" -Class SMS_SoftwareUpdate -ComputerName $global:SiteServer -Filter $WMIQueryFilter -ErrorAction Stop | Where-Object { ($_.IsSuperseded -eq $false) -and ($_.LocalizedDisplayName -like "*$($ver)*$($Arch)*") } )
+        }
 
-    if (($prod -like '*Windows Server*') -and ($ver -eq '21H2')) {
-        $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Microsoft Server operating system-21H2'"
+
+        if (($prod -like '*Windows Server*') -and ($ver -eq '1607')) {
+            $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows Server 2016'"
+            $Updates = (Get-WmiObject -Namespace "root\SMS\Site_$($global:SiteCode)" -Class SMS_SoftwareUpdate -ComputerName $global:SiteServer -Filter $WMIQueryFilter -ErrorAction Stop | Where-Object { ($_.IsSuperseded -eq $false) -and ($_.LocalizedDisplayName -notlike '* Next *') -and ($_.LocalizedDisplayName -notlike '*(1703)*') -and ($_.LocalizedDisplayName -notlike '*(1709)*') -and ($_.LocalizedDisplayName -notlike '*(1803)*') })
+        }
+
+        if (($prod -like '*Windows Server*') -and ($ver -eq '1809')) {
+            $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows Server 2019'"
+            $Updates = (Get-WmiObject -Namespace "root\SMS\Site_$($global:SiteCode)" -Class SMS_SoftwareUpdate -ComputerName $global:SiteServer -Filter $WMIQueryFilter -ErrorAction Stop | Where-Object { ($_.IsSuperseded -eq $false) -and ($_.LocalizedDisplayName -like "*$($Arch)*") } )
+        }
+
+        if (($prod -like '*Windows Server*') -and ($ver -eq '21H2')) {
+            $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Microsoft Server operating system-21H2'"
         $Updates = (Get-WmiObject -Namespace "root\SMS\Site_$($global:SiteCode)" -Class SMS_SoftwareUpdate -ComputerName $global:SiteServer -Filter $WMIQueryFilter -ErrorAction Stop | Where-Object { ($_.IsSuperseded -eq $false) -and ($_.LocalizedDisplayName -like "*$($Arch)*") } )
     }
 
@@ -4633,7 +4718,6 @@ Function Invoke-MEMCMUpdatecatalog($prod, $ver) {
 
     if ($null -eq $updates) {
         Update-Log -data 'No updates found. Product is likely not synchronized. Continuing with build...' -class Warning
-        Set-Location $global:workdir
         return
     }
 
@@ -4648,28 +4732,30 @@ Function Invoke-MEMCMUpdatecatalog($prod, $ver) {
             Invoke-MSUpdateItemDownload -FilePath "$global:workdir\updates\$Prod\$ver\" -UpdateName $update.LocalizedDisplayName
         }
     }
-
-    Set-Location $global:workdir
+    } finally {
+        Pop-Location
+    }
 }
 
 #Function to check for supersedence against ConfigMgr
 Function Invoke-MEMCMUpdateSupersedence($prod, $Ver) {
     #set-ConfigMgrConnection
-    Set-Location $CMDrive
-    $Arch = 'x64'
+    Push-Location $CMDrive
+    try {
+        $Arch = 'x64'
 
-    if (($prod -eq 'Windows 10') -and (($ver -ge '1903') -or ($ver -eq '20H2') -or ($ver -eq '21H1') -or ($ver -eq '21H2')  )) { $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows 10, version 1903 and later'" }
-    if (($prod -eq 'Windows 10') -and ($ver -le '1809')) { $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows 10'" }
-    if (($prod -eq 'Windows Server') -and ($ver = '1607')) { $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows Server 2016'" }
-    if (($prod -eq 'Windows Server') -and ($ver -eq '1809')) { $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows Server 2019'" }
-    if (($prod -eq 'Windows Server') -and ($ver -eq '21H2')) { $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Microsoft Server operating system-21H2'" }
+        if (($prod -eq 'Windows 10') -and (($ver -ge '1903') -or ($ver -eq '20H2') -or ($ver -eq '21H1') -or ($ver -eq '21H2')  )) { $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows 10, version 1903 and later'" }
+        if (($prod -eq 'Windows 10') -and ($ver -le '1809')) { $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows 10'" }
+        if (($prod -eq 'Windows Server') -and ($ver = '1607')) { $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows Server 2016'" }
+        if (($prod -eq 'Windows Server') -and ($ver -eq '1809')) { $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Windows Server 2019'" }
+        if (($prod -eq 'Windows Server') -and ($ver -eq '21H2')) { $WMIQueryFilter = "LocalizedCategoryInstanceNames = 'Microsoft Server operating system-21H2'" }
 
-    Update-Log -data 'Checking files for supersedense...' -Class Information
+        Update-Log -data 'Checking files for supersedense...' -Class Information
 
-    if ((Test-Path -Path "$global:workdir\updates\$Prod\$ver\") -eq $False) {
-        Update-Log -Data 'Folder doesnt exist. Skipping supersedence check...' -Class Warning
-        return
-    }
+        if ((Test-Path -Path "$global:workdir\updates\$Prod\$ver\") -eq $False) {
+            Update-Log -Data 'Folder doesnt exist. Skipping supersedence check...' -Class Warning
+            return
+        }
 
     #For every folder under updates\prod\ver
     $FolderFirstLevels = Get-ChildItem -Path "$global:workdir\updates\$Prod\$ver\"
@@ -4713,8 +4799,9 @@ Function Invoke-MEMCMUpdateSupersedence($prod, $Ver) {
             }
         }
     }
-
-    Set-Location $global:workdir
+    } finally {
+        Pop-Location
+    }
     Update-Log -data 'Supersedence check complete' -class Information
 }
 
@@ -4748,67 +4835,69 @@ Function Invoke-OSDCheck {
 Function Set-ImageProperties($PackageID) {
     #write-host $PackageID
     #set-ConfigMgrConnection
-    Set-Location $CMDrive
-
-    #Version Text Box
-    if ($WPFCMCBImageVerAuto.IsChecked -eq $true) {
-        $string = 'Built ' + (Get-Date -DisplayHint Date)
-        Update-Log -Data "Updating image version to $string" -Class Information
-        Set-CMOperatingSystemImage -Id $PackageID -Version $string
-    }
-
-    if ($WPFCMCBImageVerAuto.IsChecked -eq $false) {
-
-        if ($null -ne $WPFCMTBImageVer.text) {
-            Update-Log -Data 'Updating version of the image...' -Class Information
-            Set-CMOperatingSystemImage -Id $PackageID -Version $WPFCMTBImageVer.text
+    Push-Location $CMDrive
+    try {
+        #Version Text Box
+        if ($WPFCMCBImageVerAuto.IsChecked -eq $true) {
+            $string = 'Built ' + (Get-Date -DisplayHint Date)
+            Update-Log -Data "Updating image version to $string" -Class Information
+            Set-CMOperatingSystemImage -Id $PackageID -Version $string
         }
-    }
 
-    #Description Text Box
-    if ($WPFCMCBDescriptionAuto.IsChecked -eq $true) {
-        $string = 'This image contains the following customizations: '
-        if ($WPFUpdatesEnableCheckBox.IsChecked -eq $true) { $string = $string + 'Software Updates, ' }
-        if ($WPFCustomCBLangPacks.IsChecked -eq $true) { $string = $string + 'Language Packs, ' }
-        if ($WPFCustomCBLEP.IsChecked -eq $true) { $string = $string + 'Local Experience Packs, ' }
-        if ($WPFCustomCBFOD.IsChecked -eq $true) { $string = $string + 'Features on Demand, ' }
-        if ($WPFMISDotNetCheckBox.IsChecked -eq $true) { $string = $string + '.Net 3.5, ' }
-        if ($WPFMISOneDriveCheckBox.IsChecked -eq $true) { $string = $string + 'OneDrive Consumer, ' }
-        if ($WPFAppxCheckBox.IsChecked -eq $true) { $string = $string + 'APPX Removal, ' }
-        if ($WPFDriverCheckBox.IsChecked -eq $true) { $string = $string + 'Drivers, ' }
-        if ($WPFJSONEnableCheckBox.IsChecked -eq $true) { $string = $string + 'Autopilot, ' }
-        if ($WPFCustomCBRunScript.IsChecked -eq $true) { $string = $string + 'Custom Script, ' }
-        Update-Log -data 'Setting image description...' -Class Information
-        Set-CMOperatingSystemImage -Id $PackageID -Description $string
-    }
+        if ($WPFCMCBImageVerAuto.IsChecked -eq $false) {
 
-    if ($WPFCMCBDescriptionAuto.IsChecked -eq $false) {
-
-        if ($null -ne $WPFCMTBDescription.Text) {
-            Update-Log -Data 'Updating description of the image...' -Class Information
-            Set-CMOperatingSystemImage -Id $PackageID -Description $WPFCMTBDescription.Text
+            if ($null -ne $WPFCMTBImageVer.text) {
+                Update-Log -Data 'Updating version of the image...' -Class Information
+                Set-CMOperatingSystemImage -Id $PackageID -Version $WPFCMTBImageVer.text
+            }
         }
-    }
 
-    #Check Box properties
-    #Binary Differnential Replication
-    if ($WPFCMCBBinDirRep.IsChecked -eq $true) {
-        Update-Log -Data 'Enabling Binary Differential Replication' -Class Information
-        Set-CMOperatingSystemImage -Id $PackageID -EnableBinaryDeltaReplication $true
-    } else {
-        Update-Log -Data 'Disabling Binary Differential Replication' -Class Information
-        Set-CMOperatingSystemImage -Id $PackageID -EnableBinaryDeltaReplication $false
-    }
+        #Description Text Box
+        if ($WPFCMCBDescriptionAuto.IsChecked -eq $true) {
+            $string = 'This image contains the following customizations: '
+            if ($WPFUpdatesEnableCheckBox.IsChecked -eq $true) { $string = $string + 'Software Updates, ' }
+            if ($WPFCustomCBLangPacks.IsChecked -eq $true) { $string = $string + 'Language Packs, ' }
+            if ($WPFCustomCBLEP.IsChecked -eq $true) { $string = $string + 'Local Experience Packs, ' }
+            if ($WPFCustomCBFOD.IsChecked -eq $true) { $string = $string + 'Features on Demand, ' }
+            if ($WPFMISDotNetCheckBox.IsChecked -eq $true) { $string = $string + '.Net 3.5, ' }
+            if ($WPFMISOneDriveCheckBox.IsChecked -eq $true) { $string = $string + 'OneDrive Consumer, ' }
+            if ($WPFAppxCheckBox.IsChecked -eq $true) { $string = $string + 'APPX Removal, ' }
+            if ($WPFDriverCheckBox.IsChecked -eq $true) { $string = $string + 'Drivers, ' }
+            if ($WPFJSONEnableCheckBox.IsChecked -eq $true) { $string = $string + 'Autopilot, ' }
+            if ($WPFCustomCBRunScript.IsChecked -eq $true) { $string = $string + 'Custom Script, ' }
+            Update-Log -data 'Setting image description...' -Class Information
+            Set-CMOperatingSystemImage -Id $PackageID -Description $string
+        }
 
-    #Package Share
-    if ($WPFCMCBDeploymentShare.IsChecked -eq $true) {
-        Update-Log -Data 'Enabling Package Share' -Class Information
-        Set-CMOperatingSystemImage -Id $PackageID -CopyToPackageShareOnDistributionPoint $true
-    } else {
-        Update-Log -Data 'Disabling Package Share' -Class Information
-        Set-CMOperatingSystemImage -Id $PackageID -CopyToPackageShareOnDistributionPoint $false
-    }
+        if ($WPFCMCBDescriptionAuto.IsChecked -eq $false) {
 
+            if ($null -ne $WPFCMTBDescription.Text) {
+                Update-Log -Data 'Updating description of the image...' -Class Information
+                Set-CMOperatingSystemImage -Id $PackageID -Description $WPFCMTBDescription.Text
+            }
+        }
+
+        #Check Box properties
+        #Binary Differnential Replication
+        if ($WPFCMCBBinDirRep.IsChecked -eq $true) {
+            Update-Log -Data 'Enabling Binary Differential Replication' -Class Information
+            Set-CMOperatingSystemImage -Id $PackageID -EnableBinaryDeltaReplication $true
+        } else {
+            Update-Log -Data 'Disabling Binary Differential Replication' -Class Information
+            Set-CMOperatingSystemImage -Id $PackageID -EnableBinaryDeltaReplication $false
+        }
+
+        #Package Share
+        if ($WPFCMCBDeploymentShare.IsChecked -eq $true) {
+            Update-Log -Data 'Enabling Package Share' -Class Information
+            Set-CMOperatingSystemImage -Id $PackageID -CopyToPackageShareOnDistributionPoint $true
+        } else {
+            Update-Log -Data 'Disabling Package Share' -Class Information
+            Set-CMOperatingSystemImage -Id $PackageID -CopyToPackageShareOnDistributionPoint $false
+        }
+    } finally {
+        Pop-Location
+    }
 
 }
 
@@ -5356,13 +5445,12 @@ Function Get-WinVersionNumber {
     switch -Regex ($WPFSourceWimVerTextBox.text) {
 
         #Windows 10 version checks
-        '10\.0\.19044\.\d+' { $buildnum = '21H2' }
         '10\.0\.19045\.\d+' { $buildnum = '22H2' }
 
         # Windows 11 version checks
-        '10\.0\.22000\.\d+' { $buildnum = '21H2' }
-        '10\.0\.22621\.\d+' { $buildnum = '22H2' }
         '10\.0\.22631\.\d+' { $buildnum = '23H2' }
+        '10\.0\.26100\.\d+' { $buildnum = '24H2' }
+        '10\.0\.26200\.\d+' { $buildnum = '25H2' }
 
 
         Default { $buildnum = 'Unknown Version' }

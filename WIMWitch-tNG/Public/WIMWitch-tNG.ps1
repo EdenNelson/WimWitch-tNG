@@ -24,11 +24,11 @@
         [switch]$DownloadUpdates,
 
         [parameter(mandatory = $false, HelpMessage = 'Win10 Version')]
-        [ValidateSet('all', '1809', '20H2', '21H1', '21H2', '22H2')]
+        [ValidateSet('22H2')]
         [string]$Win10Version = 'none',
 
         [parameter(mandatory = $false, HelpMessage = 'Win11 Version')]
-        [ValidateSet('all', '21H2', '22H2', '23H2')]
+        [ValidateSet('all', '23H2', '24H2', '25H2')]
         [string]$Win11Version = 'none',
 
         [parameter(mandatory = $false, HelpMessage = 'Windows Server 2016')]
@@ -51,7 +51,13 @@
         [switch]$demomode,
 
         [parameter(mandatory = $false, HelpMessage = 'Select working directory')]
-        [string]$global:workdir
+        [string]$global:workdir,
+
+        [parameter(mandatory = $false, HelpMessage = 'Specify working directory path')]
+        [string]$WorkingPath,
+
+        [parameter(mandatory = $false, HelpMessage = 'Automatically fix mount point issues')]
+        [switch]$AutoFixMount
 
     )
 
@@ -190,10 +196,6 @@
                     <TextBox x:Name="UpdatesOSDBVersion" HorizontalAlignment="Left" Height="23" Margin="91,297,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120" IsEnabled="False"/>
                     <Button x:Name="UpdateOSDBUpdateButton" Content="Install / Update" HorizontalAlignment="Left" Margin="218,362,0,0" VerticalAlignment="Top" Width="120"/>
                     <TextBlock HorizontalAlignment="Left" Height="42" Margin="31,85,0,0" TextWrapping="Wrap" Text="Select which versions of Windows to download current patches for. Downloading will also purge superseded updates." VerticalAlignment="Top" Width="335"/>
-                    <CheckBox x:Name="UpdatesW10_1903" Content="1903" HorizontalAlignment="Left" Margin="67,183,0,0" VerticalAlignment="Top" IsEnabled="False" Visibility="Hidden"/>
-                    <CheckBox x:Name="UpdatesW10_1809" Content="1809" HorizontalAlignment="Left" Margin="282,190,0,0" VerticalAlignment="Top" IsEnabled="False"/>
-                    <CheckBox x:Name="UpdatesW10_1803" Content="1803" HorizontalAlignment="Left" Margin="194,182,0,0" VerticalAlignment="Top" IsEnabled="False" Visibility="Hidden"/>
-                    <CheckBox x:Name="UpdatesW10_1709" Content="1709" HorizontalAlignment="Left" Margin="251,182,0,0" VerticalAlignment="Top" IsEnabled="False" Visibility="Hidden"/>
                     <Button x:Name="UpdatesDownloadNewButton" Content="Download" HorizontalAlignment="Left" Margin="291,239,0,0" VerticalAlignment="Top" Width="75"/>
                     <TextBox x:Name="UpdatesOSDBCurrentVerTextBox" HorizontalAlignment="Left" Height="23" Margin="218,296,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120" IsEnabled="False"/>
                     <TextBlock HorizontalAlignment="Left" Margin="218,275,0,0" TextWrapping="Wrap" Text="Current Version" VerticalAlignment="Top"/>
@@ -205,23 +207,14 @@
                     <TextBox x:Name="UpdatesOSDSUSVersion" HorizontalAlignment="Left" Height="23" Margin="91,330,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120" IsEnabled="False"/>
                     <TextBox x:Name="UpdatesOSDSUSCurrentVerTextBox" HorizontalAlignment="Left" Height="23" Margin="218,330,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120" IsEnabled="False"/>
                     <CheckBox x:Name="UpdatesW10Main" Content="Windows 10" HorizontalAlignment="Left" Margin="46,172,0,0" VerticalAlignment="Top"/>
+                    <CheckBox x:Name="UpdatesW10_22h2" Content="22H2" HorizontalAlignment="Left" Margin="58,190,0,0" VerticalAlignment="Top" IsEnabled="False"/>
                     <CheckBox x:Name="UpdatesS2016" Content="Windows Server 2016" HorizontalAlignment="Left" Margin="44,251,0,0" VerticalAlignment="Top"/>
                     <CheckBox x:Name="UpdatesS2019" Content="Windows Server 2019" HorizontalAlignment="Left" Margin="44,232,0,0" VerticalAlignment="Top"/>
-                    <TextBlock x:Name="UpdatesOSDBClosePowerShellTextBlock_Copy" HorizontalAlignment="Left" Margin="26,27,0,0" TextWrapping="Wrap" Text="Select Update Catalog Source" VerticalAlignment="Top" RenderTransformOrigin="0.493,0.524" Width="321"/>
-                    <ListBox x:Name="UpdatesOSDListBox" HorizontalAlignment="Left" Height="107" Margin="391,275,0,0" VerticalAlignment="Top" Width="347"/>
-                    <CheckBox x:Name="UpdatesW10_2004" Content="2004" HorizontalAlignment="Left" Margin="193,175,0,0" VerticalAlignment="Top" IsEnabled="False" Visibility="Hidden"/>
-                    <TextBlock HorizontalAlignment="Left" Margin="391,35,0,0" TextWrapping="Wrap" Text="Download Additional Update Types" VerticalAlignment="Top"/>
-                    <CheckBox x:Name="UpdatesCBEnableOptional" Content="Optional Updates" HorizontalAlignment="Left" Margin="421,55,0,0" VerticalAlignment="Top"/>
-                    <CheckBox x:Name="UpdatesCBEnableDynamic" Content="Dynamic Updates" HorizontalAlignment="Left" Margin="421,77,0,0" VerticalAlignment="Top"/>
-                    <CheckBox x:Name="UpdatesW10_20H2" Content="20H2" HorizontalAlignment="Left" Margin="225,190,0,0" VerticalAlignment="Top" IsEnabled="False"/>
-                    <CheckBox x:Name="UpdatesW10_21h1" Content="21H1" HorizontalAlignment="Left" Margin="169,190,0,0" VerticalAlignment="Top" IsEnabled="False"/>
-                    <CheckBox x:Name="UpdatesW11Main" Content="Windows 11" HorizontalAlignment="Left" Margin="46,135,0,0" VerticalAlignment="Top"/>
                     <CheckBox x:Name="UpdatesS2022" Content="Windows Server 2022" HorizontalAlignment="Left" Margin="44,215,0,0" VerticalAlignment="Top"/>
-                    <CheckBox x:Name="UpdatesW10_21h2" Content="21H2" HorizontalAlignment="Left" Margin="112,190,0,0" VerticalAlignment="Top" IsEnabled="False"/>
-                    <CheckBox x:Name="UpdatesW11_22h2" Content="22H2" HorizontalAlignment="Left" Margin="112,152,0,0" VerticalAlignment="Top" IsEnabled="False"/>
-                    <CheckBox x:Name="UpdatesW11_21h2" Content="21H2" HorizontalAlignment="Left" Margin="168,153,0,0" VerticalAlignment="Top" IsEnabled="False"/>
-                    <CheckBox x:Name="UpdatesW10_22h2" Content="22H2" HorizontalAlignment="Left" Margin="58,190,0,0" VerticalAlignment="Top" IsEnabled="False"/>
+                    <CheckBox x:Name="UpdatesW11Main" Content="Windows 11" HorizontalAlignment="Left" Margin="46,135,0,0" VerticalAlignment="Top"/>
                     <CheckBox x:Name="UpdatesW11_23h2" Content="23H2" HorizontalAlignment="Left" Margin="58,152,0,0" VerticalAlignment="Top" IsEnabled="False"/>
+                    <CheckBox x:Name="UpdatesW11_24h2" Content="24H2" HorizontalAlignment="Left" Margin="112,152,0,0" VerticalAlignment="Top" IsEnabled="False"/>
+                    <CheckBox x:Name="UpdatesW11_25h2" Content="25H2" HorizontalAlignment="Left" Margin="168,152,0,0" VerticalAlignment="Top" IsEnabled="False"/>
                 </Grid>
             </TabItem>
             <TabItem Header="Customizations" Height="20" MinWidth="100">
@@ -386,8 +379,19 @@
     Show-OpeningText
 
     # Get-FormVariables #lists all WPF variables
-    $global:workdir = Select-WorkingDirectory
+    if ($WorkingPath) {
+        if (Test-Path $WorkingPath) {
+            $global:workdir = $WorkingPath
+            Write-Output "Using specified working directory: $WorkingPath"
+        } else {
+            Write-Error "Specified working path does not exist: $WorkingPath"
+            exit 1
+        }
+    } else {
+        $global:workdir = Select-WorkingDirectory
+    }
     Test-WorkingDirectory
+    Repair-MountPoint -AutoFix $AutoFixMount
 
     # Set the path and name for logging
     $Log = "$global:workdir\logging\WIMWitch-tNG.log"
@@ -450,9 +454,9 @@
 
     $ObjectTypes = @('Language Pack', 'Local Experience Pack', 'Feature On Demand')
     $WinOS = @('Windows Server', 'Windows 10', 'Windows 11')
-    $WinSrvVer = @('2019', '21H2')
-    $Win10Ver = @('1809', '2004')
-    $Win11Ver = @('21H2', '22H2', '23H2')
+    #$WinSrvVer = @('2019', '21H2')
+    #$Win10Ver = @('22H2')
+    #$Win11Ver = @('23H2', '24H2', '25H2')
 
     Foreach ($ObjectType in $ObjectTypes) { $WPFImportOtherCBType.Items.Add($ObjectType) | Out-Null }
     Foreach ($WinOS in $WinOS) { $WPFImportOtherCBWinOS.Items.Add($WinOS) | Out-Null }
@@ -546,130 +550,19 @@
 
 
         if ($Win10Version -ne 'none') {
-            if (($Win10Version -eq '1709')) {
-                # -or ($Win10Version -eq "all")){
+            if (($Win10Version -eq '22H2') -or ($Win10Version -eq 'all')) {
                 if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 1) {
-                    Test-Superceded -action delete -OS 'Windows 10' -Build 1709
-                    Get-WindowsPatches -OS 'Windows 10' -build 1709
+                    Test-Superceded -action delete -OS 'Windows 10' -Build 22H2
+                    Get-WindowsPatches -OS 'Windows 10' -build 22H2
                 }
                 if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 2) {
-                    Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver 1709
-                    Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -Ver 1709
+                    Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver 22H2
+                    Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -Ver 22H2
                 }
             }
+        }
 
-            if (($Win10Version -eq '1803')) {
-                # -or ($Win10Version -eq "all")){
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 1) {
-                    Test-Superceded -action delete -OS 'Windows 10' -Build 1803
-                    Get-WindowsPatches -OS 'Windows 10' -build 1803
-                }
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 2) {
-                    Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver 1803
-                    Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -Ver 1803
-                }
-            }
-
-            if (($Win10Version -eq '1809') -or ($Win10Version -eq 'all')) {
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 1) {
-                    Test-Superceded -action delete -OS 'Windows 10' -Build 1809
-                    Get-WindowsPatches -OS 'Windows 10' -build 1809
-                }
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 2) {
-                    Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver 1809
-                    Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -Ver 1809
-                }
-            }
-
-
-            if (($Win10Version -eq '1903')) {
-                # -or ($Win10Version -eq "all")){
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 1) {
-                    Test-Superceded -action delete -OS 'Windows 10' -Build 1903
-                    Get-WindowsPatches -OS 'Windows 10' -build 1903
-                }
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 2) {
-                    Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver 1903
-                    Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -Ver 1903
-                }
-            }
-
-
-            if (($Win10Version -eq '1909') -or ($Win10Version -eq 'all')) {
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 1) {
-                    Test-Superceded -action delete -OS 'Windows 10' -Build 1909
-                    Get-WindowsPatches -OS 'Windows 10' -build 1909
-                }
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 2) {
-                    Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver 1909
-                    Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -Ver 1909
-                }
-            }
-
-            if (($Win10Version -eq '2004') -or ($Win10Version -eq 'all')) {
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 1) {
-                    Test-Superceded -action delete -OS 'Windows 10' -Build 2004
-                    Get-WindowsPatches -OS 'Windows 10' -build 2004
-                }
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 2) {
-                    Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver 2004
-                    Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -Ver 2004
-                }
-            }
-
-            if (($Win10Version -eq '20H2') -or ($Win10Version -eq 'all')) {
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 1) {
-                    Test-Superceded -action delete -OS 'Windows 10' -Build 2009
-                    Get-WindowsPatches -OS 'Windows 10' -build 2009
-                }
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 2) {
-                    Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver 2009
-                    Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -Ver 2009
-                }
-            }
-
-            if (($Win10Version -eq '21H1') -or ($Win10Version -eq 'all')) {
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 1) {
-                    Test-Superceded -action delete -OS 'Windows 10' -Build 21H1
-                    Get-WindowsPatches -OS 'Windows 10' -build 21H1
-                }
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 2) {
-                    Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver 21H1
-                    Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -Ver 21H1
-                }
-            }
-
-            if (($Win10Version -eq '21H2') -or ($Win10Version -eq 'all')) {
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 1) {
-                    Test-Superceded -action delete -OS 'Windows 10' -Build 21H2
-                    Get-WindowsPatches -OS 'Windows 10' -build 21H2
-                }
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 2) {
-                    Invoke-MEMCMUpdateSupersedence -prod 'Windows 10' -Ver 21H2
-                    Invoke-MEMCMUpdatecatalog -prod 'Windows 10' -Ver 21H2
-                }
-            }
-
-            if ($Win11Version -eq '21H2') {
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 1) {
-                    Test-Superceded -action delete -OS 'Windows 11' -Build 21H2
-                    Get-WindowsPatches -OS 'Windows 11' -build 21H2
-                }
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 2) {
-                    Invoke-MEMCMUpdateSupersedence -prod 'Windows 11' -Ver 21H2
-                    Invoke-MEMCMUpdatecatalog -prod 'Windows 11' -Ver 21H2
-                }
-            }
-            if ($Win11Version -eq '22H2') {
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 1) {
-                    Test-Superceded -action delete -OS 'Windows 11' -Build 22H2
-                    Get-WindowsPatches -OS 'Windows 11' -build 22H2
-                }
-                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 2) {
-                    Invoke-MEMCMUpdateSupersedence -prod 'Windows 11' -Ver 22H2
-                    Invoke-MEMCMUpdatecatalog -prod 'Windows 11' -Ver 22H2
-                }
-            }
+        if ($Win11Version -ne 'none') {
             if ($Win11Version -eq '23H2') {
                 if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 1) {
                     Test-Superceded -action delete -OS 'Windows 11' -Build 23H2
@@ -680,8 +573,29 @@
                     Invoke-MEMCMUpdatecatalog -prod 'Windows 11' -Ver 23H2
                 }
             }
-
-            Get-OneDrive
+            if ($Win11Version -eq '24H2') {
+                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 1) {
+                    Test-Superceded -action delete -OS 'Windows 11' -Build 24H2
+                    Get-WindowsPatches -OS 'Windows 11' -build 24H2
+                }
+                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 2) {
+                    Invoke-MEMCMUpdateSupersedence -prod 'Windows 11' -Ver 24H2
+                    Invoke-MEMCMUpdatecatalog -prod 'Windows 11' -Ver 24H2
+                }
+            }
+            if ($Win11Version -eq '25H2') {
+                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 1) {
+                    Test-Superceded -action delete -OS 'Windows 11' -Build 25H2
+                    Get-WindowsPatches -OS 'Windows 11' -build 25H2
+                }
+                if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 2) {
+                    Invoke-MEMCMUpdateSupersedence -prod 'Windows 11' -Ver 25H2
+                    Invoke-MEMCMUpdatecatalog -prod 'Windows 11' -Ver 25H2
+                }
+            }
+            if (($Win11Version -eq 'all') -or ($Win11Version -eq '23H2')) {
+                Get-OneDrive
+            }
         }
     }
 
@@ -976,22 +890,8 @@
                 $WPFUpdatesW10_1903.IsEnabled = $True
                 $WPFUpdatesW10_1809.IsEnabled = $True
                 $WPFUpdatesW10_1803.IsEnabled = $True
-                $WPFUpdatesW10_1709.IsEnabled = $True
-                $WPFUpdatesW10_2004.IsEnabled = $True
-                $WPFUpdatesW10_20H2.IsEnabled = $True
-                $WPFUpdatesW10_21H1.IsEnabled = $True
-                $WPFUpdatesW10_21H2.IsEnabled = $True
                 $WPFUpdatesW10_22H2.IsEnabled = $True
             } else {
-                #$WPFUpdatesW10_1909.IsEnabled = $False
-                $WPFUpdatesW10_1903.IsEnabled = $False
-                $WPFUpdatesW10_1809.IsEnabled = $False
-                $WPFUpdatesW10_1803.IsEnabled = $False
-                $WPFUpdatesW10_1709.IsEnabled = $False
-                $WPFUpdatesW10_2004.IsEnabled = $False
-                $WPFUpdatesW10_20H2.IsEnabled = $False
-                $WPFUpdatesW10_21H1.IsEnabled = $False
-                $WPFUpdatesW10_21H2.IsEnabled = $False
                 $WPFUpdatesW10_22H2.IsEnabled = $False
             }
         })
@@ -999,13 +899,13 @@
     #Enable Win11 version selection
     $WPFUpdatesW11Main.Add_Click( {
             If ($WPFUpdatesW11Main.IsChecked -eq $true) {
-                $WPFUpdatesW11_21H2.IsEnabled = $True
-                $WPFUpdatesW11_22H2.IsEnabled = $True
                 $WPFUpdatesW11_23H2.IsEnabled = $True
+                $WPFUpdatesW11_24H2.IsEnabled = $True
+                $WPFUpdatesW11_25H2.IsEnabled = $True
             } else {
-                $WPFUpdatesW11_21H2.IsEnabled = $False
-                $WPFUpdatesW11_22H2.IsEnabled = $False
                 $WPFUpdatesW11_23H2.IsEnabled = $False
+                $WPFUpdatesW11_24H2.IsEnabled = $False
+                $WPFUpdatesW11_25H2.IsEnabled = $False
 
             }
         })
