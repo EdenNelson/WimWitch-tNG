@@ -9,5 +9,5 @@ foreach ($import in @($public + $private)) {
     }
 }
 
-Export-ModuleMember -Function 'Invoke-WIMWitch-tNG'
+Export-ModuleMember -Function 'Invoke-WimWitchTng'
 

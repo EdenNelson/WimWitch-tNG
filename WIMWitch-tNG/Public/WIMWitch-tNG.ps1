@@ -1,9 +1,10 @@
-﻿Function Invoke-WIMWitch-tNG {
-    #Requires -Version 5.0
-    #Requires -Modules OSDSUS, OSDUpdate
-    #-- Requires -ShellId <ShellId>
+﻿Function Invoke-WimWitchTng {
+    [CmdletBinding(SupportsShouldProcess=$false)]
+    # Requires -Version 5.0
+    # Requires -Modules OSDSUS, OSDUpdate
+    # Requires -ShellId <ShellId>
     # Requires -RunAsAdministrator
-    #-- Requires -PSSnapin <PSSnapin-Name> [-Version <N>[.<n>]]
+    # Requires -PSSnapin <PSSnapin-Name> [-Version <N>[.<n>]]
 
 
     #============================================================================================================
@@ -34,15 +35,7 @@
         [parameter(mandatory = $false, HelpMessage = 'Windows Server 2016')]
         [switch]$Server2016,
 
-        [parameter(mandatory = $false, HelpMessage = 'Windows Server 2019')]
-        [switch]$Server2019,
-
         [parameter(mandatory = $false, HelpMessage = 'Windows Server 2022')]
-        [switch]$Server2022,
-
-        [parameter(mandatory = $false, HelpMessage = 'This is not helpful')]
-        [switch]$HiHungryImDad,
-
         [parameter(mandatory = $false, HelpMessage = 'CM Option')]
         [ValidateSet('New', 'Edit')]
         [string]$CM = 'none',
@@ -453,9 +446,6 @@
     #Set the combo box values of the other import tab
 
     $ObjectTypes = @('Language Pack', 'Local Experience Pack', 'Feature On Demand')
-    $WinOS = @('Windows Server', 'Windows 10', 'Windows 11')
-    #$WinSrvVer = @('2019', '21H2')
-    #$Win10Ver = @('22H2')
     #$Win11Ver = @('23H2', '24H2', '25H2')
 
     Foreach ($ObjectType in $ObjectTypes) { $WPFImportOtherCBType.Items.Add($ObjectType) | Out-Null }
@@ -500,7 +490,6 @@
         Invoke-UpdateTabOptions
     }
 
-    #Function Get-WindowsPatches($build,$OS)
 
     if ($DownloadUpdates -eq $true) {
         #    If (($UpdatePoShModules -eq $true) -and ($WPFUpdatesOSDBOutOfDateTextBlock.Visibility -eq "Visible")) {
@@ -540,13 +529,6 @@
                 Test-Superceded -action delete -OS 'Windows Server' -Build 21H2
                 Get-WindowsPatches -OS 'Windows Server' -build 21H2
             }
-
-
-            if ($WPFUSCBSelectCatalogSource.SelectedIndex -eq 2) {
-                Invoke-MEMCMUpdateSupersedence -prod 'Windows Server' -Ver 21H2
-                Invoke-MEMCMUpdatecatalog -prod 'Windows Server' -Ver 21H2
-            }
-        }
 
 
         if ($Win10Version -ne 'none') {
@@ -691,15 +673,11 @@
 
     #Button to import Other Components content
     $WPFImportOtherBImport.add_click({
-            if ($WPFImportOtherCBWinOS.SelectedItem -eq 'Windows Server') {
-                if ($WPFImportOtherCBWinVer.SelectedItem -eq '2019') { $WinVerConversion = '1809' }
-            } else {
-                $WinVerConversion = $WPFImportOtherCBWinVer.SelectedItem
-            }
-
+            $WinVerConversion = $WPFImportOtherCBWinVer.SelectedItem
             if ($WPFImportOtherCBType.SelectedItem -eq 'Language Pack') { Import-LanguagePacks -Winver $WinVerConversion -WinOS $WPFImportOtherCBWinOS.SelectedItem -LPSourceFolder $WPFImportOtherTBPath.text }
             if ($WPFImportOtherCBType.SelectedItem -eq 'Local Experience Pack') { Import-LocalExperiencePack -Winver $WinVerConversion -WinOS $WPFImportOtherCBWinOS.SelectedItem -LPSourceFolder $WPFImportOtherTBPath.text }
-            if ($WPFImportOtherCBType.SelectedItem -eq 'Feature On Demand') { Import-FeatureOnDemand -Winver $WinVerConversion -WinOS $WPFImportOtherCBWinOS.SelectedItem -LPSourceFolder $WPFImportOtherTBPath.text } })
+            if ($WPFImportOtherCBType.SelectedItem -eq 'Feature On Demand') { Import-FeatureOnDemand -Winver $WinVerConversion -WinOS $WPFImportOtherCBWinOS.SelectedItem -LPSourceFolder $WPFImportOtherTBPath.text }
+        })
 
     #Button Select LP's for importation
     $WPFCustomBLangPacksSelect.add_click({ Select-LPFODCriteria -type 'LP' })
@@ -721,18 +699,29 @@
 
     #Button to Select ConfigMgr Image Package
     $WPFCMBSelectImage.Add_Click({
-            $image = (Get-WmiObject -Namespace "root\SMS\Site_$($global:SiteCode)" -Class SMS_ImagePackage -ComputerName $global:SiteServer) | Select-Object -Property Name, version, language, ImageOSVersion, PackageID, Description | Out-GridView -Title 'Pick an image' -PassThru
-            $path = $workdir + '\ConfigMgr\PackageInfo\' + $image.packageid
-            if ((Test-Path -Path $path ) -eq $True) {
-                # write-host "True"
-                Get-Configuration -filename $path
-            } else {
-                Get-ImageInfo -PackID $image.PackageID
+            # Validate ConfigMgr settings are configured
+            if ([string]::IsNullOrEmpty($global:SiteServer) -or [string]::IsNullOrEmpty($global:SiteCode)) {
+                [System.Windows.MessageBox]::Show('ConfigMgr Site Server and Site Code must be configured first. Please enter these values in the ConfigMgr settings.', 'ConfigMgr Not Configured', 'OK', 'Warning')
+                return
+            }
+
+            try {
+                $image = (Get-WmiObject -Namespace "root\SMS\Site_$($global:SiteCode)" -Class SMS_ImagePackage -ComputerName $global:SiteServer -ErrorAction Stop) | Select-Object -Property Name, version, language, ImageOSVersion, PackageID, Description | Out-GridView -Title 'Pick an image' -PassThru
+
+                if ($null -eq $image) {
+                    return
+                }
+
+                $path = $workdir + '\ConfigMgr\PackageInfo\' + $image.packageid + '.psd1'
+                if ((Test-Path -Path $path ) -eq $True) {
+                    Get-Configuration -filename $path
+                } else {
+                    Get-ImageInfo -PackID $image.PackageID
+                }
+            } catch {
+                [System.Windows.MessageBox]::Show("Error retrieving ConfigMgr images: $($_.Exception.Message)", 'ConfigMgr Error', 'OK', 'Error')
             }
         })
-
-    #Button to select new file path (may not need)
-    #$WPFCMBFilePathSelect.Add_Click({ })
 
     #Button to add DP/DPG to list box on ConfigMgr tab
     $WPFCMBAddDP.Add_Click({ Select-DistributionPoints })
@@ -886,10 +875,6 @@
     #Enable Win10 version selection
     $WPFUpdatesW10Main.Add_Click( {
             If ($WPFUpdatesW10Main.IsChecked -eq $true) {
-                #$WPFUpdatesW10_1909.IsEnabled = $True
-                $WPFUpdatesW10_1903.IsEnabled = $True
-                $WPFUpdatesW10_1809.IsEnabled = $True
-                $WPFUpdatesW10_1803.IsEnabled = $True
                 $WPFUpdatesW10_22H2.IsEnabled = $True
             } else {
                 $WPFUpdatesW10_22H2.IsEnabled = $False
@@ -1092,7 +1077,8 @@
     #Runs WIM from a path with multiple files, bypassing the GUI
     if (($auto -eq $true) -and ($autopath -ne '')) {
         Update-Log -data "Running batch job from config folder $autopath" -Class Information
-        $files = Get-ChildItem -Path $autopath
+        # Filter for config files (.psd1 only)
+        $validExtensions = @('.psd1')
         Update-Log -data 'Setting batch job for the folling configs:' -Class Information
         foreach ($file in $files) { Update-Log -Data $file -Class Information }
         foreach ($file in $files) {
@@ -1128,3 +1114,36 @@
 
     #endregion Main
 }
+# mwRWSE4W6iPjB7wJjJpH29308ZkpKKdpkiS9WNsf/eeUtvRrtIEiSJHN899L1P4l
+# 6zKVsdrUu1FX1T/ubSrsxrYJD+3f3aKg6yxdbugot06YwGXXiy5UUGZvOu3lXlxA
+# +fC13dQ5OlL2gIb5lmF6Ii8+CQOYDwXM+yd9dbmocQsHjcRPsccUd5E9FiswEqOR
+# vz8g3s+jR3SFCgXhN4wz7NgAnOgpCdUo4uDyllU9PzGCBTkwggU1AgEBMHEwWjET
+# MBEGCgmSJomT8ixkARkWA29yZzEbMBkGCgmSJomT8ixkARkWC2Nhc2NhZGV0ZWNo
+# MRUwEwYKCZImiZPyLGQBGRYFaW50cmExDzANBgNVBAMTBkNUQS1DQQITXQAAAkSP
+# dub9u4IuqwADAAACRDAJBgUrDgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAA
+# oQKAADAZBgkqhkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4w
+# DAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0BCQQxFgQUtt0/4Oo2rkuTaC+PdHPSwgEf
+# i6kwDQYJKoZIhvcNAQEBBQAEggEA3co09rntruL3/puykPZPScgGhfxo4ORCfYBn
+# onV1nU+FSLWzREoXZLX6ccJ3TK7hFiqW3Ilm9o48dad3EP3ytB43+qmWNtbtHYdI
+# 41EoonGobOtknEnBA7CDXe3G18WIZzvI0xhsEqZ+AqtVTbRREvUe+ktUjb+OjB2d
+# FlhMHXSRktkyte1cyWfGENFfhIWXevSAXL+LY3S8ECR0z8Ftq+R5Wt8DE8bSEa3X
+# aVvc2IXJ6JJplxv6swW+6de2MDiv6DwOiERc9E+WFiOD+MHqnh2zLQC3ijRnNph9
+# MD2b8mOrum8wjBWKPK1+IDGkYhqHgtfYrfJab5a/1ok7ZrZPJqGCAyMwggMfBgkq
+# hkiG9w0BCQYxggMQMIIDDAIBATBqMFUxCzAJBgNVBAYTAkdCMRgwFgYDVQQKEw9T
+# ZWN0aWdvIExpbWl0ZWQxLDAqBgNVBAMTI1NlY3RpZ28gUHVibGljIFRpbWUgU3Rh
+# bXBpbmcgQ0EgUjM2AhEApCk7bh7d16c0CIetek63JDANBglghkgBZQMEAgIFAKB5
+# MBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTI2MDEx
+# NTIzNDQ0NlowPwYJKoZIhvcNAQkEMTIEMMVyuBif6cLnFkXJQx+hDujNNvqF4sbn
+# ABZSXfhaR+D9L5vBLJtxi7K1iZYBQ+/NXzANBgkqhkiG9w0BAQEFAASCAgCXzj+Y
+# /GGt5reTjEZ93N3+sYxUid2Dk3jmU/lds3YqdyQBC1VbIDtT7wJVK7H+0RFUgTsN
+# NwTn+sEy3nI3yAJ/mVdTGb+Thbb9062Ul64f6bfzJhIflDaYnTp1HYN65s6dXI7x
+# wPK63stlLkT2KTYP8VRjKZAG+N0u+WR47Nwo8tw6CuVIZ78Q/uw7aHiQcYfJn0uv
+# TO1fKPKtAb/RAXEcEwOC82gNyXPBS8Qn+mgukhETROeGyJhuGakXImaUhULWLF66
+# pxenZMXNh0Wc5E7ba43bGPc/klLtehmMP/eNA1DkATcV4rkOc3/W4FXXvuIePb5J
+# v2X6aKHJ/2KcjpytdHNpVMRJVVeXiHyZiYEdvELClEKmsW6xvGjuYYAIumjWdGFw
+# 9BGmAfXyEs7KsCvJKgjzMsXfi6/rM1SXDS+xQhcIjbNy/BQDQUzfhgAFncGIosd0
+# j9K2mlmF/e7WKe7uq0MrwL2HJu56Iz0cbR0Sfc5DQyEHurMSMPfPPh/DtQGl2oDq
+# s4Bn0xm1oTQ5LdmNzB101gIxg2TNVw+90fC/HwtuiuWw58XA5VeHtAVakUaC4BCY
+# stGjkIzY0+6eCC4JU969x+2lESUzGJ+VbhAnr0rgS19vC8/Vwsi1PMj0I3g13ZDl
+# Ah5r08bm+udCse6PwRmAhxElyIrpJKzxuyPkzA==
+# SIG # End signature block

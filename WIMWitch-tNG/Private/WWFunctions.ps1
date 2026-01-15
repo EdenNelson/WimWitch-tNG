@@ -21,6 +21,86 @@ Function Test-Admin {
     }
 }
 
+#Function to convert legacy ConfigMgr XML files to PSD1 format
+Function Convert-ConfigMgrXmlToPsd1 {
+    [CmdletBinding()]
+    param(
+        [switch]$RemoveLegacy
+    )
+
+    # Check if ConfigMgr configs folder exists
+    $ConfigPath = "$global:workdir\configs"
+    if (-not (Test-Path -Path $ConfigPath)) {
+        Update-Log -Data 'ConfigMgr configs folder not found, skipping XML to PSD1 conversion' -Class Information
+        return
+    }
+
+    # Look for any legacy XML files in the configs folder
+    $LegacyXmlFiles = @(Get-ChildItem -Path $ConfigPath -Filter '*.xml' -ErrorAction SilentlyContinue)
+
+    if ($LegacyXmlFiles.Count -gt 0) {
+        Update-Log -Data "Found $($LegacyXmlFiles.Count) legacy ConfigMgr XML file(s) to convert" -Class Information
+
+        foreach ($XmlFile in $LegacyXmlFiles) {
+            try {
+                # Import the CLIXML file (deserialize to hashtable)
+                $ConfigData = Import-Clixml -Path $XmlFile.FullName -ErrorAction Stop
+
+                # Convert hashtable to PSD1 format
+                $PSD1FileName = [System.IO.Path]::ChangeExtension($XmlFile.FullName, '.psd1')
+
+                # Build PSD1 content with proper formatting
+                $PSD1Lines = @("@{")
+                $PSD1Lines += "    # Converted from legacy XML: $($XmlFile.Name)"
+
+                foreach ($key in $ConfigData.Keys | Sort-Object) {
+                    $value = $ConfigData[$key]
+                    $formattedValue = if ($null -eq $value) {
+                        '$null'
+                    } elseif ($value -is [bool]) {
+                        if ($value) { '$true' } else { '$false' }
+                    } elseif ($value -is [int]) {
+                        $value
+                    } elseif ($value -is [System.Collections.IEnumerable] -and $value -isnot [string]) {
+                        # Handle arrays and collections (including ItemCollection)
+                        $items = @($value | ForEach-Object {
+                            if ($_ -is [string]) {
+                                "'$($_ -replace "'", "''")'"
+                            } else {
+                                "'$($_.ToString() -replace "'", "''")'"
+                            }
+                        })
+                        if ($items.Count -eq 0) {
+                            '@()'
+                        } else {
+                            "@($($items -join ', '))"
+                        }
+                    } else {
+                        # Handle strings and other simple types
+                        "'$($value.ToString() -replace "'", "''")'"
+                    }
+                    $PSD1Lines += "    $key = $formattedValue"
+                }
+
+                $PSD1Lines += "}"
+                $PSD1Content = $PSD1Lines -join "`r`n"
+
+                Set-Content -Path $PSD1FileName -Value $PSD1Content -ErrorAction Stop
+                Update-Log -Data "Converted $($XmlFile.Name) to PSD1 format" -Class Information
+
+                if ($RemoveLegacy) {
+                    Remove-Item -Path $XmlFile.FullName -Force -ErrorAction Stop
+                    Update-Log -Data "Removed legacy XML file: $($XmlFile.Name)" -Class Information
+                }
+            }
+            catch {
+                Update-Log -Data "Error converting $($XmlFile.Name): $($_.Exception.Message)" -Class Warning
+            }
+        }
+    } else {
+        Update-Log -Data 'No legacy ConfigMgr XML files found, skipping conversion' -Class Information
+    }
+}
 
 #Function to select mounting directory
 Function Select-MountDir {
@@ -29,19 +109,6 @@ Function Select-MountDir {
     $browser.Description = 'Select the mount folder'
     $null = $browser.ShowDialog()
     $MountDir = $browser.SelectedPath
-    $WPFMISMountTextBox.text = $MountDir
-    Test-MountPath -path $WPFMISMountTextBox.text
-    Update-Log -Data 'Mount directory selected' -Class Information
-}
-
-#Function to select Source WIM
-Function Select-SourceWIM {
-    $SourceWIM = New-Object System.Windows.Forms.OpenFileDialog -Property @{
-        InitialDirectory = "$global:workdir\imports\wim"
-        Filter           = 'WIM (*.wim)|'
-    }
-    $null = $SourceWIM.ShowDialog()
-    $WPFSourceWIMSelectWIMTextBox.text = $SourceWIM.FileName
 
     if ($SourceWIM.FileName -notlike '*.wim') {
         Update-Log -Data 'A WIM file not selected. Please select a valid file to continue.' -Class Warning
@@ -198,7 +265,11 @@ Function Update-Log {
     $HostString = "$(Get-Date) $Class  -  $Data"
 
 
-    Add-Content -Path $Log -Value $LogString
+    # Only write to log file if $Log path is set
+    if ($Log) {
+        Add-Content -Path $Log -Value $LogString
+    }
+
     switch ($Class) {
         'Information' {
             Write-Host $HostString -ForegroundColor Gray
@@ -482,8 +553,7 @@ Function Compare-OSDBuilderVer {
         Update-Log -Data 'OSD Update is up to date' -class Information
         Return
     }
-    #$WPFUpdatesOSDBOutOfDateTextBlock.Visibility = "Visible"
-    $WPFUpdatesOSDListBox.items.add('A software update module is out of date. Please click the Install / Update button to update it.')
+    Update-Log -Data 'OSD Update appears to be out of date. Please click the Install / Update button to update it.' -class Warning
     Update-Log -Data 'OSD Update appears to be out of date. Run the upgrade Function from within WIM Witch to resolve' -class Warning
 
     Return
@@ -499,8 +569,7 @@ Function Compare-OSDSUSVer {
         Update-Log -Data 'OSDSUS is up to date' -class Information
         Return
     }
-    #$WPFUpdatesOSDBOutOfDateTextBlock.Visibility = "Visible"
-    $WPFUpdatesOSDListBox.items.add('A software update module is out of date. Please click the Install / Update button to update it.') | Out-Null
+    Update-Log -Data 'OSDSUS appears to be out of date. Please click the Install / Update button to update it.' -class Warning
     Update-Log -Data 'OSDSUS appears to be out of date. Run the upgrade Function from within WIM Witch to resolve' -class Warning
 
     Return
@@ -1112,11 +1181,42 @@ Function Save-Configuration {
 
         Update-Log -data "Saving configuration file $filename" -Class Information
 
+        # Ensure filename has .psd1 extension
+        if ($filename -notmatch '\.psd1$') {
+            $filename = [System.IO.Path]::ChangeExtension($filename, '.psd1')
+        }
+
         try {
-            $CurrentConfig | Export-Clixml -Path $global:workdir\Configs\$filename -ErrorAction Stop
-            Update-Log -data 'file saved' -Class Information
+            # Save as PSD1 format (PowerShell Data File)
+            $PSD1Lines = @('@{')
+            foreach ($key in $CurrentConfig.Keys | Sort-Object) {
+                $value = $CurrentConfig[$key]
+                $formattedValue = if ($null -eq $value) {
+                    '$null'
+                } elseif ($value -is [bool]) {
+                    if ($value) { '$true' } else { '$false' }
+                } elseif ($value -is [int]) {
+                    $value
+                } elseif ($value -is [System.Collections.IEnumerable] -and $value -isnot [string]) {
+                    $items = @($value | ForEach-Object {
+                        if ($_ -is [string]) {
+                            "'$($_ -replace "'", "''")'"
+                        } else {
+                            "'$($_.ToString() -replace "'", "''")'"
+                        }
+                    })
+                    if ($items.Count -eq 0) { '@()' } else { "@($($items -join ', '))" }
+                } else {
+                    "'$($value.ToString() -replace "'", "''")'"
+                }
+                $PSD1Lines += "    $key = $formattedValue"
+            }
+            $PSD1Lines += '}'
+            $PSD1Content = $PSD1Lines -join "`r`n"
+            Set-Content -Path "$global:workdir\Configs\$filename" -Value $PSD1Content -ErrorAction Stop
+            Update-Log -data "Configuration saved as PSD1: $filename" -Class Information
         } catch {
-            Update-Log -data "Couldn't save file" -Class Error
+            Update-Log -data "Couldn't save file: $($_.Exception.Message)" -Class Error
         }
     } else {
         Update-Log -data "Saving ConfigMgr Image info for Package $filename" -Class Information
@@ -1148,7 +1248,13 @@ Function Save-Configuration {
 Function Get-Configuration($filename) {
     Update-Log -data "Importing config from $filename" -Class Information
     try {
-        $settings = Import-Clixml -Path $filename -ErrorAction Stop
+        # Determine if file is PSD1 or XML format based on extension
+        if ($filename -match '\.psd1$') {
+            $settings = Import-PowerShellDataFile -Path $filename -ErrorAction Stop
+        }
+        else {
+            $settings = Import-Clixml -Path $filename -ErrorAction Stop
+        }
         Update-Log -data 'Config file read...' -Class Information
         $WPFSourceWIMSelectWIMTextBox.text = $settings.SourcePath
         $WPFSourceWimIndexTextBox.text = $settings.SourceIndex
@@ -1200,8 +1306,13 @@ Function Get-Configuration($filename) {
         $WPFCustomCBEnableStart.IsChecked = $settings.StartMenuCB
         $WPFCustomTBStartMenu.Text = $settings.StartMenuPath
         $WPFCustomCBEnableRegistry.IsChecked = $settings.RegFilesCB
-        $WPFUpdatesCBEnableOptional.IsChecked = $settings.SUOptional
-        $WPFUpdatesCBEnableDynamic.IsChecked = $settings.SUDynamic
+        # Legacy controls - skip if they don't exist
+        if (Get-Variable -Name WPFUpdatesCBEnableOptional -ErrorAction SilentlyContinue) {
+            $WPFUpdatesCBEnableOptional.IsChecked = $settings.SUOptional
+        }
+        if (Get-Variable -Name WPFUpdatesCBEnableDynamic -ErrorAction SilentlyContinue) {
+            $WPFUpdatesCBEnableDynamic.IsChecked = $settings.SUDynamic
+        }
 
         $WPFMISCBDynamicUpdates.IsChecked = $settings.ApplyDynamicCB
         $WPFMISCBBootWIM.IsChecked = $settings.UpdateBootCB
@@ -1248,14 +1359,25 @@ Function Get-Configuration($filename) {
             Invoke-ParseJSON -file $WPFJSONTextBox.text
         }
 
-        if ($WPFCMCBImageType.SelectedItem -eq 'Update Existing Image') { Get-ImageInfo -PackID $settings.CMPackageID }
+        if ($WPFCMCBImageType.SelectedItem -eq 'Update Existing Image') {
+            # Only attempt to get image info if SiteServer is set
+            if ($global:SiteServer) {
+                try {
+                    Get-ImageInfo -PackID $settings.CMPackageID
+                } catch {
+                    Update-Log -data "Could not retrieve ConfigMgr image info: $($_.Exception.Message)" -Class Warning
+                }
+            }
+        }
 
         Reset-MISCheckBox
 
     }
 
-    catch
-    { Update-Log -data "Could not import from $filename" -Class Error }
+    catch {
+        Update-Log -data "Could not import from $filename" -Class Error
+        Update-Log -data "Error details: $($_.Exception.Message)" -Class Error
+    }
 
     Invoke-CheckboxCleanup
     Update-Log -data 'Config file loaded successfully' -Class Information
@@ -4409,8 +4531,6 @@ Function Invoke-UpdateTabOptions {
         $WPFUpdateOSDBUpdateButton.IsEnabled = $false
         $WPFUpdatesDownloadNewButton.IsEnabled = $false
         $WPFUpdatesW10Main.IsEnabled = $false
-        $WPFUpdatesS2019.IsEnabled = $false
-        $WPFUpdatesS2016.IsEnabled = $false
 
         $WPFMISCBCheckForUpdates.IsEnabled = $false
         $WPFMISCBCheckForUpdates.IsChecked = $false
@@ -4421,8 +4541,6 @@ Function Invoke-UpdateTabOptions {
         $WPFUpdateOSDBUpdateButton.IsEnabled = $true
         $WPFUpdatesDownloadNewButton.IsEnabled = $true
         $WPFUpdatesW10Main.IsEnabled = $true
-        $WPFUpdatesS2019.IsEnabled = $true
-        $WPFUpdatesS2016.IsEnabled = $true
 
         $WPFMISCBCheckForUpdates.IsEnabled = $false
         $WPFMISCBCheckForUpdates.IsChecked = $false
@@ -4435,8 +4553,6 @@ Function Invoke-UpdateTabOptions {
         $WPFUpdateOSDBUpdateButton.IsEnabled = $false
         $WPFUpdatesDownloadNewButton.IsEnabled = $true
         $WPFUpdatesW10Main.IsEnabled = $true
-        $WPFUpdatesS2019.IsEnabled = $true
-        $WPFUpdatesS2016.IsEnabled = $true
         $WPFMISCBCheckForUpdates.IsEnabled = $true
         #        $MEMCMsiteinfo = Get-ItemProperty -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\SMS\Identification"
 
@@ -6198,4 +6314,4 @@ Function Invoke-MakeItSo ($appx) {
     Update-Log -Data "Job's done." -Class Information
 }
 
-#endregion Function
+#endregion 
