@@ -1,3 +1,35 @@
+<#
+.SYNOPSIS
+    Module manifest for WIMWitch-tNG - Windows Image Customization Toolkit
+
+.DESCRIPTION
+    WIMWitch-tNG is a comprehensive PowerShell module and GUI application for customizing
+    Windows installation images (WIM files). This community fork extends the original
+    WIMWitch tool with enhanced features and modern PowerShell best practices.
+
+    The module provides:
+    - Graphical interface for interactive image customization
+    - Automation support via configuration files
+    - Integration with Windows Update, ConfigMgr, and Autopilot
+    - Driver injection and application removal
+    - Language pack and Feature on Demand management
+    - Bootable ISO creation
+
+    Main Function: Invoke-WimWitchTng
+    Backward Compatibility Alias: Invoke-WIMWitch-tNG
+
+.NOTES
+    Module Name: WIMWitch-tNG
+    Author: Alex Laurie, Donna Ryan
+    Version: 4.0.1
+    Generated: 14/02/2024
+    PowerShell Version Required: 5.1 or higher
+    Copyright: (c) Alex Laurie, Donna Ryan. All rights reserved.
+
+.LINK
+    https://github.com/alaurie/WimWitchFK
+#>
+
 #
 # Module manifest for module 'WIMWitch-tNG'
 #

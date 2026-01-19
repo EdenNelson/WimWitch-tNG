@@ -1,19 +1,96 @@
-@{
-    # Windows 11 25H2 Safe-to-Remove AppX Packages
-    # Version: 1.0
-    # Last Updated: 2026-01-12
-    # Compatibility: Windows 11 25H2 (November 2024 Update and later)
-    #
-    # This list contains consumer bloatware packages that are safe to remove.
-    # All core runtime dependencies (WindowsAppRuntime, VCLibs, .NET Native, UI.Xaml)
-    # and system-critical components are EXCLUDED.
-    #
-    # Package Selection Criteria:
-    # - Confirmed safe in Windows 10 22H2, Windows 11 23H2, and Windows 11 24H2
-    # - Non-essential consumer applications
-    # - No system dependencies on these packages
-    # - Does NOT include security, authentication, or core UI components
+<#
+.SYNOPSIS
+    Windows 11 25H2 removable AppX package list for WIMWitch-tNG.
 
+.DESCRIPTION
+    This PowerShell data file contains a comprehensive list of AppX (Modern/UWP) packages
+    that can be safely removed from Windows 11 25H2 installation images during customization.
+
+    The list includes consumer-oriented applications and features that are not essential for
+    enterprise or managed environments:
+    - Consumer entertainment apps (games, music, video)
+    - Microsoft Store promotional content
+    - Consumer-focused utilities and helper apps
+    - Bloatware and pre-installed promotional software
+    - New Windows 11 25H2 consumer features
+
+    EXCLUDED from this list (intentionally NOT removable):
+    - Core Windows components and system dependencies (WindowsAppRuntime)
+    - Security and authentication components
+    - Windows Update and servicing components
+    - Essential runtime libraries (VCLibs, .NET Native, UI.Xaml)
+    - Microsoft Edge browser and WebView2
+    - AI and Copilot core components
+
+    Package Selection Criteria:
+    - Confirmed safe across Windows 10 22H2, Windows 11 23H2, and Windows 11 24H2
+    - Non-essential consumer applications only
+    - No system dependencies on these packages
+    - Does NOT include security, authentication, or core UI components
+
+.NOTES
+    File: appxWin11_25H2.psd1
+    Version: 1.0
+    Author: Eden Nelson
+    Target OS: Windows 11 25H2 (November 2024 Update and later)
+    Last Updated: 2026-01-12
+
+    Package Naming Convention:
+        PackageFamilyName_Version_Architecture_~_PublisherID
+        Example: Clipchamp.Clipchamp_4.4.10720.0_arm64__yxz26nhyzhsrt
+
+    Architectures:
+        - arm64: 64-bit ARM processors (primary architecture in this list)
+        - x64: 64-bit Intel/AMD processors
+        - neutral: Platform-independent packages
+
+    Publisher IDs:
+        - 8wekyb3d8bbwe: Microsoft Corporation
+        - yxz26nhyzhsrt: Third-party publishers (e.g., Clipchamp)
+
+    25H2-Specific Notes:
+        - Enhanced ARM64 support with native packages
+        - Updated AI and productivity features
+        - Refined consumer application set
+
+.MAINTENANCE
+    To update this list:
+    1. Deploy a clean Windows 11 25H2 image
+    2. Run: Get-AppxProvisionedPackage -Online | Select-Object DisplayName, PackageName
+    3. Identify new consumer packages safe for removal
+    4. Cross-reference with Windows 10 22H2, 11 23H2, and 11 24H2 lists for consistency
+    5. Verify no system dependencies exist
+    6. Add full PackageName to the Packages array
+    7. Test removal on reference systems (both x64 and ARM64 if applicable)
+    8. Update version number and Last Updated date
+
+    Testing Checklist:
+    - Verify Windows Update functionality
+    - Confirm Microsoft Store operation (if retained)
+    - Test core Windows features (Settings, Search, Notifications)
+    - Validate Widgets, Snap Layouts, and AI features
+    - Test Copilot functionality (if retained)
+    - Verify ARM64-specific functionality on ARM devices
+    - Check Event Viewer for system errors
+    - Test on both ARM64 and x64 architectures
+
+.COMPATIBILITY
+    This list is specific to Windows 11 25H2. Do not use for:
+    - Windows 11 24H2 or earlier (package versions differ)
+    - Future Windows 11 versions (use appropriate version-specific file)
+    - Windows 10 (different package set - use appxWin10_*.psd1 files)
+    - Windows Server editions (minimal AppX packages)
+
+    Architecture Notes:
+    - This list primarily targets ARM64 packages
+    - May include x64 equivalents for cross-platform consistency
+    - Verify architecture compatibility before deployment
+
+.LINK
+    https://github.com/alaurie/WimWitchFK
+#>
+
+@{
     Packages = @(
         'Clipchamp.Clipchamp_4.4.10720.0_arm64__yxz26nhyzhsrt',
         'Microsoft.BingNews_4.55.62231.0_arm64__8wekyb3d8bbwe',
@@ -103,3 +180,4 @@
     #   - MicrosoftWindows.Tasbar_*
     #   - Any *_arm64__cw5n1h2txyewy packages
 }
+

@@ -1,4 +1,26 @@
 #region Functions
+<#
+.SYNOPSIS
+    Displays all WPF form variables and reference instructions.
+
+.DESCRIPTION
+    Retrieves and displays all global variables prefixed with 'WPF' that are created from the XAML form definition.
+    Shows a one-time informational message directing users to this function if they need to review the form variables again.
+    This is useful for debugging and understanding the available form controls.
+
+.EXAMPLE
+    Get-FormVariables
+    Lists all available WPF control variables from the form.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function is typically called after loading the XAML form to understand available controls.
+
+.OUTPUTS
+    System.Management.Automation.PSVariable
+    Returns all variables matching the WPF* pattern.
+#>
 Function Get-FormVariables {
     if ($global:ReadmeDisplay -ne $true) { Write-Host 'If you need to reference this display again, run Get-FormVariables' -ForegroundColor Yellow; $global:ReadmeDisplay = $true }
     #write-host "Found the following interactable elements from our form" -ForegroundColor Cyan
@@ -8,7 +30,29 @@ Function Get-FormVariables {
 #===========================================================================
 # Functions for Controls
 #===========================================================================
-# Test for admin
+<#
+.SYNOPSIS
+    Verifies that the script is running with administrative privileges.
+
+.DESCRIPTION
+    Validates that the current PowerShell session has administrator rights by checking
+    the Windows principal role. If the user does not have administrator privileges,
+    logs an error message and terminates the script execution immediately.
+    This function is essential for operations that require elevated permissions.
+
+.EXAMPLE
+    Test-Admin
+    Checks if current session has admin rights; exits if not.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function should be called early in script initialization to prevent
+    partial execution with insufficient permissions.
+
+.OUTPUTS
+    None. Exits script if admin rights are not detected.
+#>
 Function Test-Admin {
     $currentUser = New-Object Security.Principal.WindowsPrincipal $([Security.Principal.WindowsIdentity]::GetCurrent())
     $adminRole = [Security.Principal.WindowsBuiltInRole]::Administrator
@@ -21,7 +65,38 @@ Function Test-Admin {
     }
 }
 
-#Function to convert legacy ConfigMgr XML files to PSD1 format
+<#
+.SYNOPSIS
+    Converts legacy ConfigManager XML configuration files to PowerShell Data (PSD1) format.
+
+.DESCRIPTION
+    Scans the configs folder for legacy XML configuration files created by ConfigManager and converts them to modern
+    PSD1 (PowerShell Data File) format. This function handles proper serialization of hashtables, arrays, booleans,
+    integers, and string values. Optionally removes the legacy XML files after successful conversion.
+    This migration ensures compatibility with current configuration import mechanisms.
+
+.PARAMETER RemoveLegacy
+    A switch parameter that, when specified, removes the original XML files after successful conversion to PSD1 format.
+    If not specified, the legacy XML files are preserved.
+
+.EXAMPLE
+    Convert-ConfigMgrXmlToPsd1
+    Converts all XML files in the configs folder to PSD1 format, preserving the original XML files.
+
+.EXAMPLE
+    Convert-ConfigMgrXmlToPsd1 -RemoveLegacy
+    Converts all XML files in the configs folder to PSD1 format and removes the original XML files.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function is typically called during application initialization to ensure all configuration files
+    are in the current PSD1 format. The conversion maintains all data types and formatting.
+
+.OUTPUTS
+    None. Updates are logged via Update-Log function with Information and Error classifications.
+    Creates new PSD1 files and optionally removes legacy XML files.
+#>
 Function Convert-ConfigMgrXmlToPsd1 {
     [CmdletBinding()]
     param(
@@ -102,7 +177,58 @@ Function Convert-ConfigMgrXmlToPsd1 {
     }
 }
 
-#Function to select mounting directory
+<#
+.SYNOPSIS
+    Prompts user to select a mount directory and validates WIM selection.
+
+.DESCRIPTION
+    Opens a folder browser dialog to allow the user to select a directory for mounting Windows images.
+    Validates that a valid WIM file has been previously selected, then prompts the user to choose
+    an image index from the selected WIM file using an Out-GridView selection dialog.
+    Finally imports the selected image information into the form.
+
+.EXAMPLE
+    Select-MountDir
+    Opens folder browser dialog and guides through image index selection.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Prerequisites: A valid WIM file must be selected before calling this function.
+    Requires: $WPFSourceWIMSelectWIMTextBox, $SourceWIM global variables
+
+.OUTPUTS
+    None. Updates form variables via Import-WimInfo
+#>
+<#
+.SYNOPSIS
+    Prompts user to select a mount directory for WIM file operations.
+
+.DESCRIPTION
+    Opens a folder browser dialog to allow the user to select a directory where a WIM file
+    will be mounted for modification. Validates that a WIM file has been previously selected.
+    After directory selection, prompts the user to choose an image index from the currently
+    selected WIM file and imports the image information.
+
+.PARAMETER
+    This function does not accept parameters. It uses global variables:
+    - $WPFSourceWIMSelectWIMTextBox: Contains the path to the selected WIM file
+    - $SourceWIM: Global variable containing the selected WIM file information
+
+.EXAMPLE
+    Select-MountDir
+    Opens folder browser dialog and prompts for WIM image index selection.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function integrates with WPF form controls and expects $WPFSourceWIMSelectWIMTextBox
+    to contain a valid WIM file path. Requires Windows Forms assembly.
+    Updates global variable $MountDir with the selected directory path.
+
+.OUTPUTS
+    None. Updates form variables and calls Import-WimInfo to process the selected index.
+#>
 Function Select-MountDir {
     Add-Type -AssemblyName System.Windows.Forms
     $browser = New-Object System.Windows.Forms.FolderBrowserDialog
@@ -127,7 +253,35 @@ Function Select-MountDir {
     Import-WimInfo -IndexNumber $IndexNumber
 }
 
-#Function to select the Source WIM file and image index
+<#
+.SYNOPSIS
+    Prompts user to select a source WIM file and image index.
+
+.DESCRIPTION
+    Opens a file dialog to allow the user to select a WIM (Windows Imaging Format) file.
+    Ensures the Imports\WIM directory exists before opening the dialog.
+    After file selection, prompts the user to choose an image index from the WIM file.
+    Stores the selection globally and populates the form with image information.
+    Validates that the selected file is a valid WIM and that the user successfully
+    selects an image index before returning.
+
+.PARAMETER
+    This function does not accept parameters. It updates global variables and WPF form controls.
+
+.EXAMPLE
+    Select-SourceWIM
+    Opens file dialog to select WIM file and image index.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    The selected WIM path is stored in $global:SourceWIM for access by other functions.
+    Updates: $WPFSourceWIMSelectWIMTextBox, $global:SourceWIM
+    Requires Windows Forms assembly and working directory structure.
+
+.OUTPUTS
+    None. Updates form variables and global state. Calls Import-WimInfo with selected index.
+#>
 Function Select-SourceWIM {
     Add-Type -AssemblyName System.Windows.Forms
 
@@ -171,6 +325,50 @@ Function Select-SourceWIM {
     Import-WimInfo -IndexNumber $selection.ImageIndex
 }
 
+<#
+.SYNOPSIS
+    Imports Windows image metadata from a WIM file and populates form fields.
+
+.DESCRIPTION
+    Retrieves detailed metadata from a specified image index within a WIM file using
+    Get-WindowsImage. Populates multiple form text boxes with image information including
+    edition name, version, service pack build, language, index number, and architecture.
+    Automatically adjusts form control states based on the image type (Windows Server disables
+    certain features like Autopilot and App packages). Handles errors gracefully if the WIM
+    file is corrupted or inaccessible.
+
+.PARAMETER IndexNumber
+    Specifies the image index within the WIM file to retrieve information from.
+    Type: [int]
+    Required: $true
+    Position: 0
+
+.PARAMETER SkipUserConfirmation
+    When specified, skips retrieving Windows version number confirmation.
+    Type: [switch]
+    Required: $false
+    Default: $false
+
+.EXAMPLE
+    Import-WimInfo -IndexNumber 1
+    Imports image information from index 1 and updates form fields.
+
+.EXAMPLE
+    Import-WimInfo -IndexNumber 2 -SkipUserConfirmation
+    Imports image information without retrieving version number confirmation.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function interacts with multiple WPF form controls and expects the following
+    global variables to exist: $WPFSourceWIMSelectWIMTextBox, $SourceWIM, and various
+    WPFSourceWim* and WPFMIS* textboxes.
+    Disables Autopilot and App tabs for Windows Server editions.
+    Updates global variable $ImageIndex.
+
+.OUTPUTS
+    None. Updates WPF form controls with retrieved image metadata.
+#>
 Function Import-WimInfo($IndexNumber, [switch]$SkipUserConfirmation) {
     Update-Log -Data 'Importing Source WIM Info' -Class Information
     try {
@@ -218,7 +416,28 @@ Function Import-WimInfo($IndexNumber, [switch]$SkipUserConfirmation) {
     if ($SkipUserConfirmation -eq $False) { $WPFSourceWimTBVersionNum.text = Get-WinVersionNumber }
 }
 
-#Function to Select JSON File
+<#
+.SYNOPSIS
+    Prompts user to select a JSON file and parses Autopilot configuration from it.
+
+.DESCRIPTION
+    Opens a file dialog to allow the user to select a JSON file containing Autopilot profile data.
+    Updates the form textbox with the selected file path and automatically invokes JSON parsing
+    to extract Autopilot-specific information such as ZtdCorrelationId and CloudAssignedTenantDomain.
+
+.EXAMPLE
+    Select-JSONFile
+    Opens file dialog and parses selected JSON file for Autopilot data.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: $WPFJSONTextBox global variable
+    Automatically calls Invoke-ParseJSON after file selection.
+
+.OUTPUTS
+    None. Updates form variables with JSON data.
+#>
 Function Select-JSONFile {
     $JSON = New-Object System.Windows.Forms.OpenFileDialog -Property @{
         InitialDirectory = [Environment]::GetFolderPath('Desktop')
@@ -232,7 +451,38 @@ Function Select-JSONFile {
     Invoke-ParseJSON -file $JSON.FileName
 }
 
-#Function to parse the JSON file for user valuable info
+<#
+.SYNOPSIS
+    Parses an Autopilot configuration JSON file and extracts relevant profile information into form fields.
+
+.DESCRIPTION
+    Reads and parses a JSON file containing Autopilot configuration data (typically created by Get-WWAutopilotProfile).
+    Extracts key Autopilot profile properties including ZtdCorrelationId, CloudAssignedTenantDomain, and Comment_File,
+    and populates the corresponding WPF form textbox controls with these values. If the JSON file is invalid or
+    cannot be parsed, updates the form fields with error messages to inform the user.
+
+.PARAMETER file
+    The file system path to the JSON file containing Autopilot configuration data.
+    Expected format: JSON file with properties for ZtdCorrelationId, CloudAssignedTenantDomain, and Comment_File.
+
+.EXAMPLE
+    Invoke-ParseJSON -file 'C:\Autopilot\AutopilotConfigurationFile.json'
+    Parses the JSON file and populates form fields with Autopilot profile information.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function updates global WPF form variables:
+    - $WPFZtdCorrelationId
+    - $WPFCloudAssignedTenantDomain
+    - $WPFComment_File
+
+    If parsing fails, error messages are displayed in the form fields and an error is logged.
+    The function returns early on parse failure without raising an exception.
+
+.OUTPUTS
+    None. Updates WPF form textbox controls with parsed JSON values or error messages.
+#>
 Function Invoke-ParseJSON($file) {
     try {
         Update-Log -Data 'Attempting to parse JSON file...' -Class Information
@@ -251,7 +501,57 @@ Function Invoke-ParseJSON($file) {
     }
 }
 
-#Function to select the paths for the driver fields
+<#
+.SYNOPSIS
+    Prompts user to select a driver source folder.
+
+.DESCRIPTION
+    Opens a folder browser dialog to allow the user to select a directory containing driver files.
+    Updates the specified form textbox with the selected folder path and logs the selection.
+
+.PARAMETER DriverTextBoxNumber
+    The WPF textbox control to update with the selected driver folder path.
+    Expected to be one of the driver textbox variables from the form.
+
+.EXAMPLE
+    Select-DriverSource -DriverTextBoxNumber $WPFDriverDir1TextBox
+    Opens folder dialog and updates Driver textbox with selected path.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function is called multiple times for different driver source fields (typically 1-5).
+
+.OUTPUTS
+    None. Updates specified textbox control.
+#>
+<#
+.SYNOPSIS
+    Prompts the user to select a driver source folder and populates the specified textbox.
+
+.DESCRIPTION
+    Opens a Windows Forms folder browser dialog allowing the user to browse and select a folder
+    containing driver files. The selected path is updated in the provided textbox control and
+    logged for audit purposes. This function is used to configure the driver source location
+    for driver injection operations.
+
+.PARAMETER DriverTextBoxNumber
+    A WPF TextBox control object that will be populated with the selected driver folder path.
+    This parameter accepts pipeline input and is typically a form textbox element from the main UI.
+
+.EXAMPLE
+    Select-DriverSource -DriverTextBoxNumber $WPFDriverSourceTextBox
+    Opens folder browser dialog and updates the specified textbox with the selected driver path.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires System.Windows.Forms assembly for file dialog functionality.
+    The selection is logged with Information classification.
+
+.OUTPUTS
+    None. Updates the provided TextBox control with the selected folder path.
+#>
 Function Select-DriverSource($DriverTextBoxNumber) {
     Add-Type -AssemblyName System.Windows.Forms
     $browser = New-Object System.Windows.Forms.FolderBrowserDialog
@@ -263,7 +563,27 @@ Function Select-DriverSource($DriverTextBoxNumber) {
 }
 
 
-#Function to assign the target directory
+<#
+.SYNOPSIS
+    Prompts user to select the target output directory for WIM files.
+
+.DESCRIPTION
+    Opens a folder browser dialog to allow the user to select a target directory where
+    modified WIM files will be saved. Updates the form textbox and logs the selection.
+
+.EXAMPLE
+    Select-TargetDir
+    Opens folder dialog and updates target directory field.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Updates: $WPFMISWimFolderTextBox
+    The selected path becomes the output destination for WIM processing.
+
+.OUTPUTS
+    None. Updates form variable.
+#>
 Function Select-TargetDir {
     Add-Type -AssemblyName System.Windows.Forms
     $browser = New-Object System.Windows.Forms.FolderBrowserDialog
@@ -275,6 +595,53 @@ Function Select-TargetDir {
 }
 
 #Function to enable logging and folder check
+<#
+.SYNOPSIS
+    Logs messages to both a file and console with color-coded severity levels.
+
+.DESCRIPTION
+    Records messages to a log file and displays them in the console with color-coded output based on severity class.
+    Supports four classification levels: Information (gray), Warning (yellow), Error (red), and Comment (green).
+    Messages are timestamped and include the severity class. The log file path is determined by the global $Log variable.
+    If no log file path is configured, messages are displayed in console only.
+
+.PARAMETER Data
+    The log message content to record. This is a mandatory parameter that accepts pipeline input.
+    Supports any string content describing the event or status being logged.
+
+.PARAMETER Solution
+    Optional supplementary information or suggested resolution related to the log message.
+    This parameter accepts pipeline input and is useful for error or warning messages.
+
+.PARAMETER Class
+    The severity classification of the message. Valid values are:
+    - Information: General informational messages (default)
+    - Warning: Warning-level messages indicating potential issues
+    - Error: Error-level messages indicating failures
+    - Comment: Commentary or status messages
+    Defaults to 'Information' if not specified.
+
+.EXAMPLE
+    Update-Log -Data 'User has admin privileges' -Class Information
+    Logs an information message about administrative privileges.
+
+.EXAMPLE
+    'Configuration loaded successfully' | Update-Log -Class Comment
+    Pipes a message to the function and logs it as a comment with green console output.
+
+.EXAMPLE
+    Update-Log -Data 'Failed to mount image' -Class Error -Solution 'Verify image path and permissions'
+    Logs an error message with an optional solution suggestion.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    The log file path is determined by the global $Log variable. If not set, only console output is produced.
+    All messages are prefixed with the current date and time.
+
+.OUTPUTS
+    None. Output is written to console and optionally to the log file.
+#>
 Function Update-Log {
     Param(
         [Parameter(
@@ -334,7 +701,35 @@ Function Update-Log {
     #  $WPFLoggingTextBox.text = Get-Content -Path $Log -Delimiter "\n"
 }
 
-#Removes old log and creates all folders if does not exist
+<#
+.SYNOPSIS
+    Initializes logging infrastructure and required application directories.
+
+.DESCRIPTION
+    Prepares the application for logging operations by creating necessary folder structure and initializing the log file.
+    Removes any existing log file to start with a clean logging session, then creates the logging directory and a new log file.
+    Additionally checks for and creates the updates directory if it does not exist.
+    All operations are logged through the Update-Log function with appropriate severity levels.
+
+.PARAMETER
+    This function does not accept parameters. It uses global variables $global:workdir to determine base directory paths.
+
+.EXAMPLE
+    Set-Logging
+    Initializes the logging system with clean log file and required directories.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function should be called during application initialization before any logging operations occur.
+    Requires the global variable $global:workdir to be set with the base working directory path.
+    The function creates the following structure:
+    - $global:workdir\Logging\WIMWitch-tNG.log
+    - $global:workdir\updates
+
+.OUTPUTS
+    None. Creates directories and log file. All status information is logged via Update-Log function.
+#>
 Function Set-Logging {
     #logging folder
     if (!(Test-Path -Path "$global:workdir\logging\WIMWitch.Log" -PathType Leaf)) {
@@ -398,6 +793,38 @@ Function Set-Logging {
 
 }
 
+<#
+.SYNOPSIS
+    Applies a driver to the mounted Windows image.
+
+.DESCRIPTION
+    Injects a single driver package into the currently mounted Windows Image (WIM) at the path
+    specified in the WPFMISMountTextBox form control. The function uses the Add-WindowsDriver
+    cmdlet to apply the driver and logs success or failure information. If the driver application
+    fails, a warning is logged rather than terminating execution.
+
+.PARAMETER drivertoapply
+    The full path to the driver file (.inf file) or driver package to be applied to the mounted image.
+    This parameter is mandatory and should point to a valid Windows driver INF file.
+
+.EXAMPLE
+    Install-Driver -drivertoapply 'C:\Drivers\Network\driver.inf'
+    Applies the specified network driver to the mounted WIM image.
+
+.EXAMPLE
+    'C:\Drivers\Storage\driver.inf' | Install-Driver
+    Pipes a driver path to the function for injection into the mounted image.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function is typically called by Start-DriverInjection in a loop to apply multiple drivers.
+    The mounted image path is read from the global form control $WPFMISMountTextBox.Text.
+    Errors are logged as warnings to allow batch operations to continue.
+
+.OUTPUTS
+    None. Logs operation results and updates via Update-Log function.
+#>
 Function Install-Driver($drivertoapply) {
     try {
         Add-WindowsDriver -Path $WPFMISMountTextBox.Text -Driver $drivertoapply -ErrorAction Stop | Out-Null
@@ -408,7 +835,38 @@ Function Install-Driver($drivertoapply) {
 
 }
 
-#Function for injecting drivers into the mounted WIM
+<#
+.SYNOPSIS
+    Recursively applies all drivers from a specified folder to the mounted Windows image.
+
+.DESCRIPTION
+    Scans the specified folder recursively for all driver INF files and applies them to the currently
+    mounted Windows Image. The function validates that the provided path is a valid directory before
+    processing. Each INF file found is passed to the Install-Driver function for individual application.
+    This allows for batch driver injection from a folder structure containing multiple driver packages.
+
+.PARAMETER Folder
+    The root folder path containing driver files to be applied. The function searches recursively through
+    all subfolders for INF driver files. Invalid or non-existent paths are skipped without error.
+
+.EXAMPLE
+    Start-DriverInjection -Folder 'C:\Drivers'
+    Recursively applies all INF drivers found in the C:\Drivers folder and its subfolders to the mounted image.
+
+.EXAMPLE
+    Start-DriverInjection -Folder $WPFDriverSourceTextBox.Text
+    Uses the driver source path from the UI textbox to inject all available drivers.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Invalid or non-existent folder paths are silently skipped. Only files with .inf extension are processed.
+    Requires a mounted Windows image with the path configured in $WPFMISMountTextBox.Text.
+    Each driver application is logged individually and batch completion is logged.
+
+.OUTPUTS
+    None. Logs operation results via Update-Log function for each driver and batch completion.
+#>
 Function Start-DriverInjection($Folder) {
     #This filters out invalid paths, such as the default value
     $testpath = Test-Path $folder -PathType Container
@@ -424,6 +882,30 @@ Function Start-DriverInjection($Folder) {
 }
 
 #Function to retrieve OSDUpdate Version
+<#
+.SYNOPSIS
+    Retrieves the installed version of the OSDUpdate PowerShell module.
+
+.DESCRIPTION
+    Attempts to import the OSDUpdate module and retrieves its version information.
+    Updates the WPF form textbox with the installed version or displays 'Not Installed' if the module is not found.
+    Logs all actions and errors through the Update-Log function.
+
+.PARAMETER
+    None. This function does not accept parameters.
+
+.EXAMPLE
+    Get-OSDBInstallation
+    Retrieves and displays the installed OSDUpdate module version in the WPF interface.
+
+.NOTES
+    Author: Eden Nelson
+    The function updates global WPF form controls: $WPFUpdatesOSDBVersion.Text
+    If the module is not installed, users should run Update-OSDB to install it.
+
+.OUTPUTS
+    None. Updates WPF form controls with version information.
+#>
 Function Get-OSDBInstallation {
     Update-Log -Data 'Getting OSD Installation information' -Class Information
     try {
@@ -445,8 +927,30 @@ Function Get-OSDBInstallation {
     }
 }
 
-# Function to retrieve OSDSUS Version
+<#
+.SYNOPSIS
+    Retrieves the installed version of the OSDSUS PowerShell module.
 
+.DESCRIPTION
+    Attempts to import the OSDSUS module and retrieves its version information.
+    Updates the WPF form textbox with the installed version or displays 'Not Installed' if the module is not found.
+    Logs all actions and errors through the Update-Log function.
+
+.PARAMETER
+    None. This function does not accept parameters.
+
+.EXAMPLE
+    Get-OSDSUSInstallation
+    Retrieves and displays the installed OSDSUS module version in the WPF interface.
+
+.NOTES
+    Author: Eden Nelson
+    The function updates global WPF form controls: $WPFUpdatesOSDSUSVersion.Text
+    If the module is not installed, users should run Update-OSDSUS to install it.
+
+.OUTPUTS
+    None. Updates WPF form controls with version information.
+#>
 Function Get-OSDSUSInstallation {
     Update-Log -Data 'Getting OSDSUS Installation information' -Class 'Information'
     try {
@@ -469,7 +973,30 @@ Function Get-OSDSUSInstallation {
     }
 }
 
-#Function to retrieve current OSDUpdate Version
+<#
+.SYNOPSIS
+    Retrieves the latest available version of the OSDUpdate module from PowerShell Gallery.
+
+.DESCRIPTION
+    Queries the PowerShell Gallery to find the most current available version of the OSDUpdate module.
+    Updates the WPF form textbox with the latest available version or displays 'Network Error' if the query fails.
+    This information is used by Compare-OSDBuilderVer to determine if updates are available.
+
+.PARAMETER
+    None. This function does not accept parameters.
+
+.EXAMPLE
+    Get-OSDBCurrentVer
+    Retrieves and displays the latest available OSDUpdate version in the WPF interface.
+
+.NOTES
+    Author: Eden Nelson
+    The function updates global WPF form controls: $WPFUpdatesOSDBCurrentVerTextBox.Text
+    Requires internet connectivity to query the PowerShell Gallery.
+
+.OUTPUTS
+    None. Updates WPF form controls with the latest available version.
+#>
 Function Get-OSDBCurrentVer {
     Update-Log -Data 'Checking for the most current OSDUpdate version available' -Class Information
     try {
@@ -484,7 +1011,30 @@ Function Get-OSDBCurrentVer {
     }
 }
 
-#Function to retrieve current OSDUSUS Version
+<#
+.SYNOPSIS
+    Retrieves the latest available version of the OSDSUS module from PowerShell Gallery.
+
+.DESCRIPTION
+    Queries the PowerShell Gallery to find the most current available version of the OSDSUS module.
+    Updates the WPF form textbox with the latest available version or displays 'Network Error' if the query fails.
+    This information is used by Compare-OSDSUSVer to determine if updates are available.
+
+.PARAMETER
+    None. This function does not accept parameters.
+
+.EXAMPLE
+    Get-OSDSUSCurrentVer
+    Retrieves and displays the latest available OSDSUS version in the WPF interface.
+
+.NOTES
+    Author: Eden Nelson
+    The function updates global WPF form controls: $WPFUpdatesOSDSUSCurrentVerTextBox.Text
+    Requires internet connectivity to query the PowerShell Gallery.
+
+.OUTPUTS
+    None. Updates WPF form controls with the latest available version.
+#>
 Function Get-OSDSUSCurrentVer {
     Update-Log -Data 'Checking for the most current OSDSUS version available' -Class Information
     try {
@@ -499,7 +1049,32 @@ Function Get-OSDSUSCurrentVer {
     }
 }
 
-#Function to update or install OSDUpdate
+<#
+.SYNOPSIS
+    Installs or updates the OSDUpdate PowerShell module.
+
+.DESCRIPTION
+    Checks the current installation status of the OSDUpdate module and either installs it for the first time
+    or updates it to the latest version available in the PowerShell Gallery. Prompts the user to close all
+    PowerShell windows after installation or update to ensure proper module loading on next launch.
+    Updates are applied via the Update-ModuleOSDUpdate cmdlet.
+
+.PARAMETER
+    None. This function does not accept parameters.
+
+.EXAMPLE
+    Update-OSDB
+    Installs OSDUpdate if not present, or updates it if a newer version is available.
+
+.NOTES
+    Author: Eden Nelson
+    This function modifies global WPF form controls and global workdir variables.
+    After installation or update, users must close and reopen WIM Witch for changes to take effect.
+    Uses Update-Log for status reporting and error handling.
+
+.OUTPUTS
+    None. Modifies WPF form controls and updates global variables.
+#>
 Function Update-OSDB {
     if ($WPFUpdatesOSDBVersion.Text -eq 'Not Installed') {
         Update-Log -Data 'Attempting to install and import OSD Update' -Class Information
@@ -544,7 +1119,32 @@ Function Update-OSDB {
     }
 }
 
-#Function to update or install OSDSUS
+<#
+.SYNOPSIS
+    Installs or updates the OSDSUS PowerShell module.
+
+.DESCRIPTION
+    Checks the current installation status of the OSDSUS module and either installs it for the first time
+    or updates it to the latest version available in the PowerShell Gallery. Prompts the user to close all
+    PowerShell windows after installation or update to ensure proper module loading on next launch.
+    Updates are performed by uninstalling all versions and reinstalling the latest.
+
+.PARAMETER
+    None. This function does not accept parameters.
+
+.EXAMPLE
+    Update-OSDSUS
+    Installs OSDSUS if not present, or updates it if a newer version is available.
+
+.NOTES
+    Author: Eden Nelson
+    This function modifies global WPF form controls and global workdir variables.
+    After installation or update, users must close and reopen WIM Witch for changes to take effect.
+    Uses Update-Log for status reporting and error handling.
+
+.OUTPUTS
+    None. Modifies WPF form controls and updates global variables.
+#>
 Function Update-OSDSUS {
     if ($WPFUpdatesOSDSUSVersion.Text -eq 'Not Installed') {
         Update-Log -Data 'Attempting to install and import OSDSUS' -Class Information
@@ -587,7 +1187,31 @@ Function Update-OSDSUS {
     }
 }
 
-#Function to compare OSDBuilder Versions
+<#
+.SYNOPSIS
+    Compares the installed OSDUpdate module version with the latest available version.
+
+.DESCRIPTION
+    Compares the currently installed OSDUpdate version (retrieved by Get-OSDBInstallation) with the
+    latest available version in the PowerShell Gallery (retrieved by Get-OSDBCurrentVer).
+    Logs a warning message if updates are available, directing the user to click the Install/Update button.
+    If the module is not installed or versions match, appropriate informational messages are logged.
+
+.PARAMETER
+    None. This function does not accept parameters.
+
+.EXAMPLE
+    Compare-OSDBuilderVer
+    Compares installed and available OSDUpdate versions and logs update availability status.
+
+.NOTES
+    Author: Eden Nelson
+    This function relies on WPF form controls set by Get-OSDBInstallation and Get-OSDBCurrentVer.
+    Should be called after both Get-OSDBInstallation and Get-OSDBCurrentVer have executed.
+
+.OUTPUTS
+    None. Logs comparison results via Update-Log function.
+#>
 Function Compare-OSDBuilderVer {
     Update-Log -data 'Comparing OSD Update module versions' -Class Information
     if ($WPFUpdatesOSDBVersion.Text -eq 'Not Installed') {
@@ -603,7 +1227,31 @@ Function Compare-OSDBuilderVer {
     Return
 }
 
-#Function to compare OSDSUS Versions
+<#
+.SYNOPSIS
+    Compares the installed OSDSUS module version with the latest available version.
+
+.DESCRIPTION
+    Compares the currently installed OSDSUS version (retrieved by Get-OSDSUSInstallation) with the
+    latest available version in the PowerShell Gallery (retrieved by Get-OSDSUSCurrentVer).
+    Logs a warning message if updates are available, directing the user to click the Install/Update button.
+    If the module is not installed or versions match, appropriate informational messages are logged.
+
+.PARAMETER
+    None. This function does not accept parameters.
+
+.EXAMPLE
+    Compare-OSDSUSVer
+    Compares installed and available OSDSUS versions and logs update availability status.
+
+.NOTES
+    Author: Eden Nelson
+    This function relies on WPF form controls set by Get-OSDSUSInstallation and Get-OSDSUSCurrentVer.
+    Should be called after both Get-OSDSUSInstallation and Get-OSDSUSCurrentVer have executed.
+
+.OUTPUTS
+    None. Logs comparison results via Update-Log function.
+#>
 Function Compare-OSDSUSVer {
     Update-Log -data 'Comparing OSDSUS module versions' -Class Information
     if ($WPFUpdatesOSDSUSVersion.Text -eq 'Not Installed') {
@@ -619,7 +1267,43 @@ Function Compare-OSDSUSVer {
     Return
 }
 
-#Function to check for superceded updates
+<#
+.SYNOPSIS
+    Identifies and optionally removes superseded Windows updates from the update storage directory.
+
+.DESCRIPTION
+    Scans the WIM Witch update storage directory for a specified Windows OS and build version.
+    Queries the OSDUpdate catalog to determine which updates are still current and which have been superseded.
+    Can either audit superseded updates (report only) or delete them to free storage space.
+    Properly handles nested directory structures and complex update package hierarchies.
+
+.PARAMETER action
+    Specifies the action to perform on superseded updates: 'delete' removes superseded files and folders,
+    'audit' reports superseded updates without removing them.
+
+.PARAMETER OS
+    The Windows operating system to check (e.g., 'Windows 10', 'Windows 11', 'Windows Server').
+
+.PARAMETER Build
+    The build number to check (e.g., '22H2', '23H2', '24H2', '1809', '21H2').
+
+.EXAMPLE
+    Test-Superceded -action audit -OS 'Windows 10' -Build '22H2'
+    Audits for superseded updates in Windows 10 22H2 without deleting them.
+
+.EXAMPLE
+    Test-Superceded -action delete -OS 'Windows 11' -Build '24H2'
+    Deletes all superseded updates from Windows 11 24H2 directory.
+
+.NOTES
+    Author: Eden Nelson
+    Uses the global $workdir variable for the update storage location.
+    Requires the OSDUpdate module to query current update status.
+    Updates WPF form controls when superseded updates are discovered in audit mode.
+
+.OUTPUTS
+    None. Deletes files/folders or updates WPF form controls based on action parameter.
+#>
 Function Test-Superceded($action, $OS, $Build) {
     Update-Log -Data 'Checking WIM Witch Update store for superseded updates' -Class Information
     $path = $global:workdir + '\updates\' + $OS + '\' + $Build + '\' #sets base path
@@ -660,7 +1344,36 @@ Function Test-Superceded($action, $OS, $Build) {
     Update-Log -data 'Supercedense check complete.' -Class Information
 }
 
-#Function to download new patches with OSDSUS
+<#
+.SYNOPSIS
+    Downloads Windows updates for a specified OS version and build from the OSDUpdate catalog.
+
+.DESCRIPTION
+    Downloads multiple categories of Windows updates including SSU (Servicing Stack Updates), AdobeSU,
+    LCU (Latest Cumulative Updates), .NET Framework updates, and optional/dynamic updates based on user preferences.
+    Uses the OSDUpdate module's Get-OSDUpdate and Get-DownOSDUpdate cmdlets to retrieve and download files.
+    Updates are organized into separate folders by category within the update storage directory.
+    Handles errors gracefully for each update category independently.
+
+.PARAMETER build
+    The Windows build version to download updates for (e.g., '22H2', '23H2', '24H2', '1809', '21H2').
+
+.PARAMETER OS
+    The Windows operating system to download updates for (e.g., 'Windows 10', 'Windows 11', 'Windows Server').
+
+.EXAMPLE
+    Get-WindowsPatches -build '22H2' -OS 'Windows 10'
+    Downloads all available Windows 10 22H2 updates to the configured update storage directory.
+
+.NOTES
+    Author: Eden Nelson
+    Uses global variables: $global:workdir for storage location, WPF checkboxes for optional/dynamic flags.
+    Downloads include: SSU, AdobeSU, LCU, DotNet, DotNetCU, and optionally Optional and SetupDU (Dynamic).
+    Each category is downloaded to its own subdirectory based on UpdateGroup classification.
+
+.OUTPUTS
+    None. Downloads files to disk and logs progress via Update-Log function.
+#>
 Function Get-WindowsPatches($build, $OS) {
     Update-Log -Data "Downloading SSU updates for $OS $build" -Class Information
     try {
@@ -727,7 +1440,32 @@ Function Get-WindowsPatches($build, $OS) {
 
 }
 
-#Function to remove superceded updates and initate new patch download
+<#
+.SYNOPSIS
+    Coordinates the removal of superseded updates and downloads of current patches for selected Windows versions.
+
+.DESCRIPTION
+    Provides a central orchestration function that integrates supersedence checking, update removal, and
+    new patch downloads. Supports both OSDSUS and ConfigMgr (Intune) catalog sources. Processes all selected
+    Windows versions and builds from the WPF form, performing supersedence checks and initiating downloads
+    for Windows 10 (22H2), Windows 11 (23H2, 24H2, 25H2), and Windows Server versions (1607, 1809, 21H2).
+
+.PARAMETER
+    None. This function does not accept parameters. All configuration comes from WPF form controls.
+
+.EXAMPLE
+    Update-PatchSource
+    Processes all selected Windows versions and downloads current patches after removing superseded updates.
+
+.NOTES
+    Author: Eden Nelson
+    This is the primary workflow function for managing update sources. It reads multiple WPF checkboxes
+    to determine which OS versions and builds to process. Supports both OSDSUS and ConfigMgr update sources.
+    Calls Get-OneDrive on completion for cloud integration.
+
+.OUTPUTS
+    None. Downloads files to disk and updates WPF form controls with progress information.
+#>
 Function Update-PatchSource {
 
     Update-Log -Data 'attempting to start download Function' -Class Information
@@ -811,6 +1549,33 @@ Function Update-PatchSource {
     Update-Log -data 'All downloads complete' -class Information
 }
 
+<#
+.SYNOPSIS
+    Deploys Latest Cumulative Update (LCU) packages to the mounted Windows image.
+
+.DESCRIPTION
+    Handles OS-specific deployment of LCU packages. For Windows 10, extracts the LCU CAB file and applies
+    both SSU (Servicing Stack Update) and LCU components. For Windows 11, converts the CAB file to MSU format
+    and applies it directly. Supports demo mode for testing without actually applying updates.
+    Properly orders SSU application before LCU to ensure system stability.
+
+.PARAMETER packagepath
+    The full path to the LCU package directory containing the CAB file(s) to be deployed.
+
+.EXAMPLE
+    Deploy-LCU -packagepath 'C:\workdir\updates\Windows 10\22H2\LCU'
+    Deploys the LCU package to the currently mounted Windows 10 image.
+
+.NOTES
+    Author: Eden Nelson
+    Uses global variables: $global:workdir for staging location, $WPFMISMountTextBox.Text for mount path.
+    Respects $demomode variable to skip actual updates during testing.
+    Windows 10 uses expand.exe for CAB extraction; Windows 11 converts CAB to MSU format.
+    Must be run after the WIM image is mounted by Mount-WindowsImage.
+
+.OUTPUTS
+    None. Applies packages to mounted image and logs progress via Update-Log function.
+#>
 Function Deploy-LCU($packagepath) {
 
     $osver = Get-WindowsType
@@ -886,7 +1651,39 @@ Function Deploy-LCU($packagepath) {
 
 }
 
-#Function to apply updates to mounted WIM
+<#
+.SYNOPSIS
+    Applies Windows updates to a mounted Windows image based on the specified update class.
+
+.DESCRIPTION
+    Comprehensive update deployment function that handles multiple update types and Windows versions.
+    Supports SSU, LCU, AdobeSU, .NET, DotNetCU, Optional, and Dynamic/PE (Preinstallation Environment) updates.
+    Automatically detects Windows version and build, handles version-specific deployment logic,
+    and provides fallback mechanisms for different OS configurations. Skips Adobe updates for Server Core builds.
+    Manages PE-prefixed updates separately for Windows PE environments.
+
+.PARAMETER class
+    The class of updates to deploy: 'SSU', 'LCU', 'AdobeSU', 'DotNet', 'DotNetCU', 'Optional', 'Dynamic',
+    'PESSU' (PE SSU), or 'PELCU' (PE LCU). PE variants are routed to the mount directory for PE images.
+
+.EXAMPLE
+    Deploy-Updates -class 'LCU'
+    Applies all Latest Cumulative Updates appropriate for the currently mounted Windows image.
+
+.EXAMPLE
+    Deploy-Updates -class 'DotNet'
+    Applies all .NET Framework updates to the mounted image.
+
+.NOTES
+    Author: Eden Nelson
+    Uses global variables: $global:workdir for update storage, WPF form controls for mount paths and image info.
+    Automatically handles special cases: Windows 10 18362 build detection, 1903 vs 1909 differentiation for PE.
+    Respects demo mode to prevent actual updates during testing via $demomode variable.
+    Dynamic updates are extracted to media\sources; other updates use Add-WindowsPackage.
+
+.OUTPUTS
+    None. Applies packages to mounted image and logs progress via Update-Log function.
+#>
 Function Deploy-Updates($class) {
 
     if (($class -eq 'AdobeSU') -and ($WPFSourceWIMImgDesTextBox.text -like 'Windows Server 20*') -and ($WPFSourceWIMImgDesTextBox.text -notlike '*(Desktop Experience)')) {
@@ -976,6 +1773,29 @@ Function Deploy-Updates($class) {
 }
 
 #Function to select AppX packages to yank
+<#
+.SYNOPSIS
+    Prompts user to select AppX packages to remove from the Windows image.
+
+.DESCRIPTION
+    Loads the appropriate AppX package list file based on the detected Windows version and build number.
+    Displays all available packages in a grid view dialog allowing user multi-select.
+    Updates the form with selected packages and returns the selection for processing.
+
+.EXAMPLE
+    Select-Appx
+    Displays AppX packages available for the selected Windows image and allows selection for removal.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: $WPFSourceWimTBVersionNum, $WPFAppxTextBox global variables
+    AppX list files are stored in Assets folder with naming convention: appxWin##_##.psd1
+
+.OUTPUTS
+    Array of strings
+    Returns array of selected AppX package names, or $null if none selected.
+#>
 Function Select-Appx {
 
     $AssetsPath = Join-Path -Path $PSScriptRoot -ChildPath 'Assets'
@@ -1014,7 +1834,45 @@ Function Select-Appx {
         return $exappxs
     }
 }
-#Function to remove appx packages
+
+<#
+.SYNOPSIS
+    Removes selected AppX packages from the mounted Windows image.
+
+.DESCRIPTION
+    Iterates through an array of AppX package names and removes each one from the currently mounted
+    Windows image using Remove-AppxProvisionedPackage. Handles removal errors gracefully, logging
+    each package removal attempt and any failures. This function is typically called after the user
+    has selected which AppX packages to remove using Select-Appx.
+
+.PARAMETER array
+    An array of AppX package names to be removed from the mounted image.
+    These package names should match the provisioned package identifiers in the Windows image.
+    Type: [System.Object[]]
+    Required: $true
+    Position: 0
+
+.EXAMPLE
+    Remove-Appx -array $selectedPackages
+    Removes all packages in the $selectedPackages array from the mounted image.
+
+.EXAMPLE
+    $packages = 'Microsoft.ZuneMusic_*', 'Microsoft.ZuneVideo_*'
+    Remove-Appx -array $packages
+    Removes the specified Zune music and video packages from the mounted Windows image.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    The mounted image path is read from the global form control $WPFMISMountTextBox.Text.
+    Each package removal is logged individually via the Update-Log function.
+    If a package fails to remove, the error is logged but processing continues with remaining packages.
+    This function should only be called when the WIM image is properly mounted and the form is initialized.
+
+.OUTPUTS
+    None. Logs all removal operations and results via the Update-Log function.
+    Returns after processing all packages in the array.
+#>
 Function Remove-Appx($array) {
     $exappxs = $array
     Update-Log -data 'Starting AppX removal' -class Information
@@ -1031,6 +1889,37 @@ Function Remove-Appx($array) {
 }
 
 #Function to remove unwanted image indexes
+<#
+.SYNOPSIS
+    Removes all image indexes from a WIM file except the selected one.
+
+.DESCRIPTION
+    Identifies all images within the staging WIM file and removes all indexes
+    except the one currently selected in the form (specified in $WPFSourceWIMImgDesTextBox).
+    This operation permanently modifies the WIM file to contain only the desired image.
+    Iterates through all available images, evaluates each one against the selected image,
+    and removes non-matching indexes using Remove-WindowsImage.
+
+.PARAMETER
+    This function does not accept parameters. It uses global variables:
+    - $global:workdir: Base working directory path
+    - $WPFSourceWIMImgDesTextBox.Text: Contains the name of the image index to keep
+
+.EXAMPLE
+    Remove-OSIndex
+    Removes all image indexes from the WIM file except the currently selected one.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This is a destructive operation. The WIM file in $global:workdir\Staging\*.wim
+    will be permanently modified with all non-selected indexes removed.
+    Logs all operations via Update-Log function for troubleshooting.
+    Assumes exactly one WIM file exists in the Staging directory.
+
+.OUTPUTS
+    None. Modifies the WIM file in place and logs all operations.
+#>
 Function Remove-OSIndex {
     Update-Log -Data 'Attempting to remove unwanted image indexes' -Class Information
     $wimname = Get-Item -Path $global:workdir\Staging\*.wim
@@ -1051,6 +1940,54 @@ Function Remove-OSIndex {
 }
 
 #Function to select which folder to save Autopilot JSON file to
+<#
+.SYNOPSIS
+    Prompts user to select a directory for saving Autopilot JSON profile files.
+
+.DESCRIPTION
+    Opens a folder browser dialog to allow the user to select a destination directory
+    for saving Autopilot profile JSON files. Updates the form textbox with the selected path.
+
+.EXAMPLE
+    Select-NewJSONDir
+    Opens folder dialog and updates Autopilot save directory field.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Updates: $WPFJSONTextBoxSavePath
+    This selected directory will be used as the destination for Autopilot profile exports.
+
+.OUTPUTS
+    None. Updates form variable.
+#>
+<#
+.SYNOPSIS
+    Prompts the user to select a directory for saving Autopilot JSON configuration files.
+
+.DESCRIPTION
+    Opens a Windows Forms folder browser dialog allowing the user to browse and select a target directory
+    for saving Autopilot JSON configuration files. The selected path is updated in the form's save path
+    textbox control and logged for audit purposes. This function is used to specify the output location
+    when retrieving Autopilot profiles from Intune.
+
+.PARAMETER
+    This function does not accept parameters. It uses global WPF form variables for interaction.
+
+.EXAMPLE
+    Select-NewJSONDir
+    Opens folder browser dialog and updates the JSON save path textbox with user selection.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires System.Windows.Forms assembly for folder browser dialog functionality.
+    Updates the global variable $WPFJSONTextBoxSavePath with the selected folder path.
+    The selection is logged with Information classification.
+
+.OUTPUTS
+    None. Updates the $WPFJSONTextBoxSavePath textbox control with the selected folder path.
+#>
 Function Select-NewJSONDir {
 
     Add-Type -AssemblyName System.Windows.Forms
@@ -1063,6 +2000,32 @@ Function Select-NewJSONDir {
     Update-Log -Data $text -Class Information
 }
 
+<#
+.SYNOPSIS
+    Updates the WindowsAutopilotIntune PowerShell module to the latest available version.
+
+.DESCRIPTION
+    Uninstalls the current version of the WindowsAutopilotIntune module and installs the latest available version
+    from the PowerShell Gallery. After successful installation, prompts the user that WIM Witch must close and
+    PowerShell must be restarted to complete the update process. Closes the application upon user confirmation.
+
+.PARAMETER
+    This function does not accept parameters.
+
+.EXAMPLE
+    Update-Autopilot
+    Uninstalls current WindowsAutopilotIntune module and installs latest version, then closes application.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function is called when a newer version of the WindowsAutopilotIntune module is available and the user
+    chooses to proceed with the update. The application will exit after the update to allow PowerShell to reload
+    the new module version.
+
+.OUTPUTS
+    None. Updates module and closes the application.
+#>
 Function Update-Autopilot {
     Update-Log -Data 'Uninstalling old WindowsAutopilotIntune module...' -Class Warning
     Uninstall-Module -Name WindowsAutopilotIntune -AllVersions
@@ -1075,7 +2038,44 @@ Function Update-Autopilot {
     }
 }
 
-#Function to retrieve autopilot profile from intune
+<#
+.SYNOPSIS
+    Retrieves the Autopilot profile from Microsoft Intune and saves it as a JSON configuration file.
+
+.DESCRIPTION
+    Ensures all required dependencies are installed (NuGet, AzureAD, and WindowsAutopilotIntune modules),
+    checks for module updates, and connects to Microsoft Intune. Retrieves available Autopilot profiles,
+    presents them in an interactive selection dialog, and exports the selected profile as a JSON configuration
+    file to the specified output directory. The JSON file is saved as 'AutopilotConfigurationFile.json'.
+
+.PARAMETER login
+    The user login credentials or identifier for authenticating with Microsoft Intune.
+    This parameter is provided for potential future use in the function.
+
+.PARAMETER path
+    The file system path where the Autopilot configuration JSON file will be saved.
+    The function will create 'AutopilotConfigurationFile.json' in this directory.
+
+.EXAMPLE
+    Get-WWAutopilotProfile -login 'user@contoso.com' -path 'C:\Autopilot'
+    Retrieves Autopilot profile from Intune and saves JSON configuration to C:\Autopilot\AutopilotConfigurationFile.json
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires:
+    - NuGet package provider (minimum version 2.8.5.201)
+    - AzureAD PowerShell module
+    - WindowsAutopilotIntune PowerShell module
+    - Interactive access to Microsoft Intune
+
+    The function automatically installs missing dependencies. If the WindowsAutopilotIntune module is outdated,
+    the user is prompted to update it. Module versions prior to 3.9 use Connect-AutopilotIntune; version 3.9
+    and later use Connect-MSGraph for authentication.
+
+.OUTPUTS
+    None. Creates an AutopilotConfigurationFile.json file in the specified path directory.
+#>
 Function Get-WWAutopilotProfile($login, $path) {
     Update-Log -data 'Checking dependencies for Autopilot profile retrieval...' -Class Information
 
@@ -1144,6 +2144,43 @@ Function Get-WWAutopilotProfile($login, $path) {
 }
 
 #Function to save current configuration
+<#
+.SYNOPSIS
+    Saves the current WIM customization configuration to a file.
+
+.DESCRIPTION
+    Captures all current WPF form control values and settings from the WIMWitch application interface,
+    then saves them to a configuration file in PSD1 format. This allows users to save their customization
+    preferences for later use. The function collects settings for source WIM, updates, drivers, Autopilot,
+    applications, language packs, features on demand, custom scripts, and Configuration Manager integration
+    if enabled. The saved configuration can be reloaded using Get-Configuration.
+
+.PARAMETER filename
+    The name or path of the configuration file to save. If not specified, defaults to a generated filename
+    based on system information and timestamp.
+
+.PARAMETER CM
+    A switch parameter that, when specified, includes Configuration Manager-specific settings in the saved
+    configuration file, such as image type, package ID, site code, and distribution point information.
+    If not specified, only standard WIMWitch settings are saved.
+
+.EXAMPLE
+    Save-Configuration -filename 'MyConfig.psd1'
+    Saves the current configuration to MyConfig.psd1 with standard WIMWitch settings.
+
+.EXAMPLE
+    Save-Configuration -filename 'CMConfig.psd1' -CM
+    Saves the current configuration with Configuration Manager settings included.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function reads from global WPF form variables created from XAML and saves all current state.
+    The configuration file can be imported later to restore all settings.
+
+.OUTPUTS
+    None. Creates or overwrites the specified configuration file with PSD1 formatted data.
+#>
 Function Save-Configuration {
     Param(
         [parameter(mandatory = $false, HelpMessage = 'config file')]
@@ -1289,6 +2326,40 @@ Function Save-Configuration {
 }
 
 #Function to import configurations from file
+<#
+.SYNOPSIS
+    Loads configuration settings from a file and applies them to WIM customization form controls.
+
+.DESCRIPTION
+    Imports configuration settings from either PSD1 (PowerShell Data File) or XML format files and applies
+    them to the corresponding WPF form controls in the WIMWitch application interface. This function detects
+    the file format based on extension and uses the appropriate deserialization method. It populates all source
+    WIM settings, driver paths, Autopilot configuration, language packs, features on demand, custom scripts,
+    and Configuration Manager settings if present. Legacy XML format files are automatically supported for
+    backward compatibility.
+
+.PARAMETER filename
+    The full path to the configuration file to load. Supports both PSD1 and XML formats.
+    The file must be a valid configuration file created by Save-Configuration.
+
+.EXAMPLE
+    Get-Configuration -filename 'C:\configs\MyConfig.psd1'
+    Loads the configuration from MyConfig.psd1 and applies all settings to the form controls.
+
+.EXAMPLE
+    Get-Configuration -filename 'C:\configs\LegacyConfig.xml'
+    Loads the configuration from a legacy XML format file.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function sets WPF form control values directly and should only be called after the form is
+    fully initialized. Legacy XML files are supported for backward compatibility with older WIMWitch versions.
+    The function includes error handling for missing legacy controls.
+
+.OUTPUTS
+    None. Modifies WPF form control values directly. Updates are logged via Update-Log function.
+#>
 Function Get-Configuration($filename) {
     Update-Log -data "Importing config from $filename" -Class Information
     try {
@@ -1428,6 +2499,28 @@ Function Get-Configuration($filename) {
 }
 
 #Function to select configuration file
+<#
+.SYNOPSIS
+    Prompts user to select a configuration XML file and loads it.
+
+.DESCRIPTION
+    Opens a file dialog to allow the user to select a previously saved WIM Witch configuration XML file.
+    Updates the form textbox with the selected file path and automatically loads the configuration
+    into the application, populating all form fields with saved settings.
+
+.EXAMPLE
+    Select-Config
+    Opens file dialog to select config file and loads its settings into the form.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Configuration files are stored in the working directory's Configs subfolder.
+    Updates: $WPFSLLoadTextBox
+
+.OUTPUTS
+    None. Updates form state with configuration file data.
+#>
 Function Select-Config {
     $SourceXML = New-Object System.Windows.Forms.OpenFileDialog -Property @{
         InitialDirectory = "$global:workdir\Configs"
@@ -1439,6 +2532,32 @@ Function Select-Config {
 }
 
 #Function to reset reminder values from check boxes on the MIS tab when loading a config
+<#
+.SYNOPSIS
+    Refreshes and synchronizes the Mount Image Service (MIS) interface controls based on configuration checkboxes.
+
+.DESCRIPTION
+    Evaluates all enabled configuration checkboxes in the WIMWitch form and updates the corresponding Mount Image
+    Service (MIS) section controls and text display values. This function enables relevant buttons and updates status
+    text boxes to reflect the current configuration state. It synchronizes the MIS display with Autopilot, Drivers,
+    Updates, Appx packages, custom applications, start menu customizations, and registry file settings. This ensures
+    the user interface accurately reflects which customization options are currently enabled.
+
+.EXAMPLE
+    Reset-MISCheckBox
+    Refreshes all MIS controls and text boxes to reflect the current configuration settings.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function should be called after any configuration checkbox is modified or after loading a saved
+    configuration file via Get-Configuration. It ensures the MIS interface remains synchronized with the overall
+    application state.
+
+.OUTPUTS
+    None. Updates WPF form control properties (IsEnabled) and text box values directly.
+    Logs activity via Update-Log function with Information classification.
+#>
 Function Reset-MISCheckBox {
     Update-Log -data 'Refreshing MIS Values...' -class Information
 
@@ -1471,6 +2590,42 @@ Function Reset-MISCheckBox {
 }
 
 #Function to run WIM Witch from a config file
+<#
+.SYNOPSIS
+    Executes a configuration file to automate WIM image customization.
+
+.DESCRIPTION
+    Loads and processes a configuration file (.psd1) containing preset customization options,
+    then orchestrates the automated build of a Windows image based on those settings.
+    This function provides unattended/scripted execution mode for WIMWitch-tNG, enabling
+    batch processing and CI/CD integration. The configuration file is loaded via Get-Configuration,
+    settings are applied, and the image build is initiated through Invoke-MakeItSo.
+    Progress and completion are logged with decorative separators for clear output boundaries.
+
+.PARAMETER filename
+    The path to the configuration file (.psd1) to execute. This file contains all the
+    customization settings including source WIM path, updates, drivers, applications,
+    and output options that would normally be selected through the GUI.
+
+.EXAMPLE
+    Invoke-RunConfigFile -filename 'C:\WIMWitch\configs\Windows11-Standard.psd1'
+    Loads the Windows11-Standard configuration and builds the image according to its settings.
+
+.EXAMPLE
+    Invoke-RunConfigFile 'D:\Configs\Win10-Engineering.psd1'
+    Executes the Win10-Engineering configuration file for automated image creation.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function is the primary entry point for automation scenarios and batch processing.
+    Requires a valid configuration file created through the GUI or manually authored.
+    Updates and results are logged via the Update-Log function.
+
+.OUTPUTS
+    System.String. Outputs formatted text via Write-Output indicating completion with separator lines.
+    Logs all operations via Update-Log function.
+#>
 Function Invoke-RunConfigFile($filename) {
     Update-Log -Data "Loading the config file: $filename" -Class Information
     Get-Configuration -filename $filename
@@ -1481,6 +2636,32 @@ Function Invoke-RunConfigFile($filename) {
     Write-Output ' '
 }
 
+<#
+.SYNOPSIS
+    Displays the closing banner and exit message for WIMWitch-tNG.
+
+.DESCRIPTION
+    Displays a formatted ASCII banner thanking the user for using WIMWitch-tNG.
+    This function is called when the application exits, providing a clean and professional closing message.
+    The banner format includes decorative hash-mark separators matching the opening banner style for visual consistency.
+    Uses Write-Host instead of Write-Output to ensure proper output during application exit sequences.
+
+.PARAMETER
+    This function does not accept parameters.
+
+.EXAMPLE
+    Show-ClosingText
+    Displays the WIMWitch-tNG closing banner and thank you message.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function should be called when the application is exiting or completing execution.
+    Uses Write-Host (rather than Write-Output) to ensure output is displayed correctly during application termination.
+
+.OUTPUTS
+    System.String. Outputs formatted text to the console via Write-Host for the closing banner display.
+#>
 function Show-ClosingText {
     #Before you start bitching about write-host, write-output doesn't work with the exiting function. Suggestions are welcome.
     Write-Host ' '
@@ -1491,6 +2672,32 @@ function Show-ClosingText {
     Write-Host '##########################################################'
 }
 
+<#
+.SYNOPSIS
+    Displays the opening banner and application title for WIMWitch-tNG.
+
+.DESCRIPTION
+    Clears the console screen and displays a formatted ASCII banner with the application name,
+    version information, and decorative separators. This function provides visual feedback when
+    the application starts, informing the user that WIMWitch-tNG is running and displaying the current version.
+    The banner format includes centered text with hash-mark decorative borders.
+
+.PARAMETER
+    This function does not accept parameters. It uses the global variable $WWScriptVer for version display.
+
+.EXAMPLE
+    Show-OpeningText
+    Displays the WIMWitch-tNG opening banner with current application version.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function should be called early in the application startup sequence to provide visual confirmation
+    that the application has launched. Requires the global variable $WWScriptVer to be set with version information.
+
+.OUTPUTS
+    System.String. Outputs formatted text to the console via Write-Output for the opening banner display.
+#>
 function Show-OpeningText {
     Clear-Host
     Write-Output '##########################################################'
@@ -1503,6 +2710,42 @@ function Show-OpeningText {
 }
 
 #Function to check suitability of the proposed mount point folder
+<#
+.SYNOPSIS
+    Validates and prepares a directory path for WIM image mounting.
+
+.DESCRIPTION
+    Inspects a specified path to determine if it is suitable for mounting Windows images.
+    Checks for existing mount points and orphaned files. Can optionally clean the directory
+    by dismounting any mounted images or removing existing content.
+    Returns detailed status information through logging.
+
+.PARAMETER path
+    The file system path to validate as a mount point destination.
+    This should be an empty or cleanable directory.
+
+.PARAMETER clean
+    Optional switch to enable automatic cleanup. If $true, the function will:
+    - Dismount any mounted images at the path
+    - Remove existing files and subdirectories
+
+.EXAMPLE
+    Test-MountPath -path 'C:\WIM\Mount' -clean $true
+    Validates the mount path and cleans it if necessary.
+
+.EXAMPLE
+    Test-MountPath -path 'D:\WorkDir\Mount'
+    Validates the path without cleaning.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function logs all operations and warnings to the logging system.
+    Used during WIM Witch initialization to prepare the mount directory.
+
+.OUTPUTS
+    None. Updates are communicated through the Update-Log function.
+#>
 Function Test-MountPath {
     param(
         [parameter(mandatory = $true, HelpMessage = 'mount path')]
@@ -1569,6 +2812,43 @@ Function Test-MountPath {
 }
 
 #Function to check the name of the target file and remediate if necessary
+<#
+.SYNOPSIS
+    Validates and processes the target WIM file name for uniqueness and proper extension.
+
+.DESCRIPTION
+    Ensures the target WIM file name has a .wim extension and checks for naming conflicts
+    in the destination folder. Handles conflicts according to the specified conflict resolution
+    strategy by appending extension, overwriting, backing up existing files, or stopping.
+    Updates the form textbox with the corrected filename if extension is missing.
+
+.PARAMETER conflict
+    Specifies the action to take if a file with the same name already exists.
+    Valid values:
+    - 'stop': Halts operation and logs a warning (default)
+    - 'append': Renames existing file with timestamp and continues
+    - 'backup': Creates backup of existing file
+    - 'overwrite': Replaces existing file
+
+.EXAMPLE
+    Test-Name
+    Validates WIM name with default 'stop' conflict resolution.
+
+.EXAMPLE
+    Test-Name -conflict 'append'
+    Validates WIM name and renames existing file if conflict exists.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: $WPFMISWimNameTextBox, $WPFMISWimFolderTextBox form variables
+    This function automatically appends .wim extension if missing.
+
+.OUTPUTS
+    System.String
+    Returns 'stop' if validation fails or conflict cannot be resolved.
+    Returns nothing if validation succeeds.
+#>
 Function Test-Name {
     Param(
         [parameter(mandatory = $false, HelpMessage = 'what to do')]
@@ -1612,7 +2892,42 @@ Function Test-Name {
     Update-Log -Data 'New WIM name is valid' -Class Information
 }
 
-#Function to rename existing target wim file if the target WIM name already exists
+<#
+.SYNOPSIS
+    Renames an existing file by appending a timestamp to avoid naming conflicts.
+
+.DESCRIPTION
+    Creates a unique filename by appending the file's last write time as a timestamp
+    to the original filename before the extension. This prevents overwriting existing
+    files and preserves historical versions. Handles errors gracefully and logs all operations.
+    Timestamp format: YYYY_MM_DD_HH_MM_SS
+
+.PARAMETER file
+    The full path to the file to be renamed.
+
+.PARAMETER extension
+    The file extension (including the dot) to preserve in the new filename.
+    Example: '.wim', '.iso'
+
+.EXAMPLE
+    Rename-Name -file "C:\Images\install.wim" -extension ".wim"
+    Renames install.wim to install2026_01_19_14_30_45.wim
+
+.EXAMPLE
+    Rename-Name "C:\Output\custom.iso" ".iso"
+    Renames custom.iso to custom2026_01_19_14_30_45.iso
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    The timestamp is based on the file's LastWriteTime property.
+    Special characters in timestamp are replaced with underscores for filesystem compatibility.
+
+.OUTPUTS
+    System.String
+    Returns 'stop' if rename operation fails.
+    Returns nothing if rename succeeds.
+#>
 Function Rename-Name($file, $extension) {
     $text = 'Renaming existing ' + $extension + ' file...'
     Update-Log -Data $text -Class Warning
@@ -1631,6 +2946,31 @@ Function Rename-Name($file, $extension) {
 }
 
 #Function to see if the folder WIM Witch was started in is an installation folder. If not, prompt for installation
+<#
+.SYNOPSIS
+    Creates and validates the required WIM Witch working directory structure.
+
+.DESCRIPTION
+    Verifies that the working directory contains all necessary subdirectories for WIM Witch operations.
+    If any required folders are missing, automatically creates them. This ensures a consistent
+    and complete directory structure for staging, logging, mounting, and output operations.
+    Essential as a preflight check before main application operations begin.
+
+.EXAMPLE
+    Test-WorkingDirectory
+    Validates working directory structure and creates missing folders as needed.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Required folders: CompletedWIMs, Configs, drivers, jobs, logging, Mount, Staging,
+    updates, imports, imports\WIM, imports\DotNet, Autopilot, backup
+    This function should be called during application initialization.
+    Output is written to the console, not to the logging system.
+
+.OUTPUTS
+    None. Console output indicates folder validation and creation status.
+#>
 Function Test-WorkingDirectory {
 
     $subfolders = @(
@@ -1679,6 +3019,29 @@ Function Test-WorkingDirectory {
 
 }
 
+<#
+.SYNOPSIS
+    Prompts user to select the working directory for WIM Witch operations.
+
+.DESCRIPTION
+    Opens a folder browser dialog to allow the user to select a root working directory.
+    This directory will be used to store all WIM Witch temporary files, staging areas, and output.
+    Exits the script if user cancels the dialog or provides an invalid selection.
+
+.EXAMPLE
+    $workdir = Select-WorkingDirectory
+    Opens folder dialog and returns selected working directory path.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    User cancellation results in script termination.
+    The selected directory should be empty or on a large partition with sufficient free space.
+
+.OUTPUTS
+    String
+    Returns the full path of the selected working directory.
+#>
 Function Select-WorkingDirectory {
     $selectWorkingDirectory = New-Object System.Windows.Forms.FolderBrowserDialog
     $selectWorkingDirectory.Description = 'Select the working directory.'
@@ -1692,6 +3055,45 @@ Function Select-WorkingDirectory {
     return $selectWorkingDirectory.SelectedPath
 }
 
+<#
+.SYNOPSIS
+    Inspects and repairs issues with the WIM mount point directory.
+
+.DESCRIPTION
+    Diagnoses and resolves problems with the mount directory used for WIM image operations.
+    Checks for:
+    - Mounted images that need to be dismounted
+    - Orphaned files and folders from previous operations
+    - Missing mount directory (creates if needed)
+
+    When AutoFix is disabled, prompts user for repair options. When enabled, automatically
+    dismounts images and removes orphaned content without user intervention.
+
+.PARAMETER AutoFix
+    Boolean switch to enable automatic repair without user prompts.
+    Default is $false, which requires user interaction for decisions.
+
+.EXAMPLE
+    Repair-MountPoint -AutoFix $true
+    Automatically repairs all mount point issues.
+
+.EXAMPLE
+    Repair-MountPoint
+    Interactively prompts user for repair actions.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Mount point location: $global:workdir\Mount
+    User options (when AutoFix is $false):
+    1) Dismount mounted images
+    2) Purge mount directory completely
+    3) Continue without repairs
+    All operations are logged via Update-Log.
+
+.OUTPUTS
+    None. Operations and status are communicated through logging system.
+#>
 Function Repair-MountPoint {
     param(
         [bool]$AutoFix = $false
@@ -1792,6 +3194,46 @@ Function Repair-MountPoint {
     Update-Log -Data "Mount point check complete" -Class Information
 }
 
+<#
+.SYNOPSIS
+    Converts a Windows build number to its marketing version name.
+
+.DESCRIPTION
+    Translates Windows OS build numbers into their corresponding marketing version names
+    (e.g., 22H2, 23H2, 24H2). Supports Windows 10 22H2, Windows 11 versions, and Windows Server.
+    Identifies unsupported legacy Windows 10 builds and logs appropriate warnings or errors.
+    Returns 'Unknown' for unrecognized build numbers and 'Unsupported' for deprecated versions.
+
+.PARAMETER wimversion
+    The full Windows build version string to parse.
+    Format: Major.Minor.Build.Revision (e.g., '10.0.22631.1234')
+
+.EXAMPLE
+    Set-Version -wimversion '10.0.22631.1234'
+    Returns: '23H2' (Windows 11 23H2)
+
+.EXAMPLE
+    Set-Version '10.0.19045.3570'
+    Returns: '22H2' (Windows 10 22H2)
+
+.EXAMPLE
+    Set-Version '10.0.17763.1234'
+    Returns: 'Unsupported' and logs error for Windows 10 1809
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Only Windows 10 22H2 (build 1904*) is supported for Windows 10.
+    Windows 11 versions: 23H2 (22631), 24H2 (26100), 25H2 (26200)
+    Windows Server 2022: 21H2 (20348)
+
+.OUTPUTS
+    System.String
+    Returns the marketing version name or status:
+    - '22H2', '23H2', '24H2', '25H2', '21H2' for supported versions
+    - 'Unsupported' for deprecated Windows 10 builds
+    - 'Unknown' for unrecognized build numbers
+#>
 Function Set-Version($wimversion) {
     # Windows 11 versions
     if ($wimversion -like '10.0.22631.*') { $version = '23H2' }
@@ -1834,7 +3276,44 @@ Function Set-Version($wimversion) {
 }
 
 
-#Function Import-ISO($file, $type, $newname) {
+<#
+.SYNOPSIS
+    Imports Windows installation media content from an ISO file into the WIM Witch import structure.
+
+.DESCRIPTION
+    Mounts a Windows installation ISO and extracts WIM/ESD files, .NET binaries, and ISO media binaries
+    to their respective import folders. Handles conversion of ESD format to WIM format, validates Windows
+    versions, and organizes imported content by OS type and version number. Creates appropriate directory
+    structures for Windows 10, Windows 11, and Windows Server editions.
+
+.PARAMETER
+    This function uses global form variables:
+    - $WPFImportISOTextBox: Path to the ISO file to import
+    - $WPFImportNewNameTextBox: New name for the imported WIM file
+    - $WPFImportWIMCheckBox: Flag to import WIM/ESD content
+    - $WPFImportDotNetCheckBox: Flag to import .NET 3.5 binaries
+    - $WPFImportISOCheckBox: Flag to import ISO media binaries
+
+.EXAMPLE
+    Import-ISO
+    Imports all selected content (WIM, .NET, ISO binaries) from the ISO file selected in the form.
+
+.EXAMPLE
+    Import-ISO
+    With only $WPFImportWIMCheckBox checked, imports only the install.wim file.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    The function mounts ISO without a drive letter for safer handling.
+    Supports both WIM and ESD format source files with automatic conversion.
+    Validates Windows versions and rejects unsupported builds.
+    Requires administrative privileges.
+
+.OUTPUTS
+    None. Updates are logged via Update-Log function.
+    Creates/updates files in: $global:workdir\Imports\WIM, DotNet, and iso subdirectories.
+#>
 Function Import-ISO {
     $newname = $WPFImportNewNameTextBox.Text
     $file = $WPFImportISOTextBox.Text
@@ -2070,6 +3549,37 @@ Function Import-ISO {
 }
 
 #Function to select ISO for import
+<#
+.SYNOPSIS
+    Prompts user to select an ISO file to import content from.
+
+.DESCRIPTION
+    Opens a file dialog to allow the user to select a Windows installation ISO file.
+    Updates the form textbox with the selected ISO file path and validates that a proper
+    ISO file was selected before logging the selection. Initializes with the Desktop folder.
+
+.PARAMETER
+    This function uses global form variables:
+    - $WPFImportISOTextBox: Textbox to populate with the selected ISO file path
+
+.EXAMPLE
+    Select-ISO
+    Opens file dialog to select Windows installation ISO file, updates form textbox.
+
+.EXAMPLE
+    Select-ISO
+    User selects file, function validates .iso extension and logs the selection.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Initial directory defaults to Desktop
+    Validates .iso file extension before accepting selection
+    Logs warnings if non-ISO file is selected
+
+.OUTPUTS
+    None. Updates form variable $WPFImportISOTextBox with selected file path.
+#>
 Function Select-ISO {
 
     $SourceISO = New-Object System.Windows.Forms.OpenFileDialog -Property @{
@@ -2090,6 +3600,34 @@ Function Select-ISO {
 }
 
 #Function to inject the .Net 3.5 binaries from the import folder
+<#
+.SYNOPSIS
+    Injects .NET 3.5 binaries into a mounted Windows image.
+
+.DESCRIPTION
+    This function injects .NET 3.5 framework binaries into a mounted Windows image using Add-WindowsPackage.
+    It automatically detects the Windows version and architecture to determine the correct source path for
+    the .NET binaries. For Windows 10, it uses the build number. For Windows 11 and Windows Server, it uses
+    the OS type along with the build number. The source files must be located in the imports folder structure.
+
+.PARAMETER None
+    This function uses global variables for configuration:
+    - $global:workdir: The working directory containing imports and mount points
+    - $WPFMISMountTextBox.Text: The path to the mounted Windows image
+
+.EXAMPLE
+    Add-DotNet
+    Injects the appropriate .NET 3.5 binaries for the current Windows version into the mounted image.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: Mounted Windows image and .NET binaries in the proper directory structure.
+    The function logs all operations and errors via Update-Log.
+
+.OUTPUTS
+    None. Logs injection status via Update-Log function.
+#>
 Function Add-DotNet {
 
     $buildnum = Get-WinVersionNumber
@@ -2113,7 +3651,35 @@ Function Add-DotNet {
     Update-Log -Data '.Net 3.5 injection complete' -Class Information
 }
 
-#Function to see if the .Net binaries for the select Win10 version exist
+<#
+.SYNOPSIS
+    Verifies that .NET 3.5 binaries exist for the selected Windows version.
+
+.DESCRIPTION
+    Tests whether the required .NET 3.5 binaries are present in the imports directory for the
+    currently selected Windows version and build number. This function validates the availability
+    of .NET files before attempting injection. It handles the special case of Windows 10 20H2
+    build which is identified as 2009. For Windows 11 and Windows Server, it includes the OS
+    type in the path structure.
+
+.PARAMETER None
+    This function uses global variables for configuration:
+    - $global:workdir: The working directory containing the DotNet imports folder
+    - $WPFSourceWimTBVersionNum.text: The version/build number of the Windows image
+
+.EXAMPLE
+    Test-DotNetExists
+    Checks if .NET 3.5 binaries are available for the selected Windows version.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: Add-DotNet function for injection operations.
+    Windows 10 20H2 uses special build number mapping (20H2 -> 2009).
+
+.OUTPUTS
+    System.Boolean. Returns $false if binaries are not found, otherwise returns the result of Test-Path.
+#>
 Function Test-DotNetExists {
 
     $OSType = Get-WindowsType
@@ -2141,6 +3707,36 @@ Function Test-DotNetExists {
 #where v1.0 was released. Everything
 #below is from updates -DRR 10/22/2020
 
+<#
+.SYNOPSIS
+    Prompts the user to upgrade WIM Witch to the latest version from PowerShell Gallery.
+
+.DESCRIPTION
+    Interactively prompts the user to upgrade WIM Witch by downloading the latest version from
+    the PowerShell Gallery. If the user confirms, creates a backup of the current version using
+    Backup-WIMWitch, downloads the new version using Save-Script, and exits the application to
+    allow the user to restart with the updated version. If the upgrade fails, returns control
+    without exiting. If the user declines, logs the decision and continues normal operation.
+    The function validates user input and recursively re-prompts on invalid entries.
+
+.PARAMETER None
+    This function uses global variables:
+    - $global:workdir: The working directory where the upgraded script will be saved
+
+.EXAMPLE
+    Install-WimWitchUpgrade
+    Prompts the user to upgrade WIM Witch and handles the upgrade process interactively.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: Internet connectivity to download from PowerShell Gallery.
+    The function exits the application after successful upgrade to ensure clean restart.
+    User must manually restart WIM Witch after upgrade.
+
+.OUTPUTS
+    None. Logs update status via Update-Log function and exits application on successful upgrade.
+#>
 Function Install-WimWitchUpgrade {
     Write-Output 'Would you like to upgrade WIM Witch?'
     $yesno = Read-Host -Prompt '(Y/N)'
@@ -2174,7 +3770,40 @@ Function Install-WimWitchUpgrade {
 
 }
 
-#Function to backup WIM Witch script file during upgrade
+<#
+.SYNOPSIS
+    Creates a backup of the current WIM Witch script file before performing an upgrade.
+
+.DESCRIPTION
+    Backs up the currently running WIM Witch script file to the backup subdirectory within the
+    working directory. Identifies the current script using $MyInvocation.PSCommandPath, copies it
+    to the backup folder, and attempts to rename it with a timestamp for archiving purposes using
+    the Rename-Name function. If the copy operation fails (typically due to permissions issues),
+    logs an error and exits to prevent potential data loss. If the rename operation fails, logs
+    a warning but continues with the upgrade process since this is not considered critical.
+    This function ensures a recovery path exists before applying upgrades.
+
+.PARAMETER None
+    This function uses global variables:
+    - $global:workdir: The working directory containing the backup subdirectory
+    Uses automatic variables:
+    - $MyInvocation.PSCommandPath: Full path to the currently executing script
+
+.EXAMPLE
+    Backup-WIMWitch
+    Creates a backup of the current WIM Witch script in the backup folder.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: Write permissions to the backup directory.
+    Exits the script if backup copy fails to prevent upgrade without recovery option.
+    Called automatically by Install-WimWitchUpgrade before downloading new version.
+
+.OUTPUTS
+    None. Creates backup file and logs operations via Update-Log function.
+    May exit script if critical backup operation fails.
+#>
 Function Backup-WIMWitch {
     Update-log -data 'Backing up existing WIM Witch script...' -Class Information
 
@@ -2204,8 +3833,36 @@ Function Backup-WIMWitch {
     }
 }
 
-#Function to download current OneDrive client
-#Most of this was stolen from David Segura @SeguraOSD
+<#
+.SYNOPSIS
+    Downloads the latest OneDrive client installer(s) for the target Windows version and architecture.
+
+.DESCRIPTION
+    Downloads the current OneDrive setup executable(s) from Microsoft's official download links based on
+    the Windows version and architecture being serviced. For Windows 10 x64, it downloads both x86 and x64
+    installers. For Windows 11 x64, it downloads only the x64 installer. For Windows 11 ARM64, it downloads
+    the ARM64 installer. Files are saved to the updates\OneDrive directory structure with architecture-specific
+    subdirectories (x86, x64, or arm64).
+
+.PARAMETER None
+    This function uses global variables for configuration:
+    - $global:workdir: The working directory where OneDrive installers will be saved
+    - $WPFSourceWimArchTextBox.text: The architecture of the target Windows image (x64 or ARM64)
+
+.EXAMPLE
+    Get-OneDrive
+    Downloads the appropriate OneDrive installer(s) for the selected Windows version and architecture.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: Internet connectivity to download from Microsoft's official CDN.
+    The function handles architecture-specific download logic automatically.
+    Based on original work by David Segura (@SeguraOSD).
+
+.OUTPUTS
+    None. Downloads files to $global:workdir\updates\OneDrive and logs status via Update-Log.
+#>
 Function Get-OneDrive {
     #https://go.microsoft.com/fwlink/p/?LinkID=844652 -Possible new link location.
     #https://go.microsoft.com/fwlink/?linkid=2181064 - x64 installer
@@ -2273,7 +3930,36 @@ Function Get-OneDrive {
 
 }
 
-#Function to copy new OneDrive client installer to mount path
+<#
+.SYNOPSIS
+    Copies the updated x86 OneDrive installer to the mounted Windows image (SysWOW64).
+
+.DESCRIPTION
+    Copies the x86 OneDrive installer from the updates folder to the SysWOW64 directory in a mounted
+    Windows image. This function handles the complex task of modifying file permissions (ACLs) to allow
+    the copy operation, then restores the original ACLs. It includes validation to skip the operation
+    if the target is a Windows 11 or ARM64 system (which lack SysWOW64), or if the installer has not
+    been downloaded.
+
+.PARAMETER None
+    This function uses global variables for configuration:
+    - $global:workdir: The working directory containing the OneDrive x86 installer
+    - $WPFMISMountTextBox.text: The path to the mounted Windows image
+
+.EXAMPLE
+    Copy-OneDrive
+    Copies the x86 OneDrive installer to the mounted image's SysWOW64 folder.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: A mounted Windows image and a downloaded x86 OneDrive installer.
+    Only applies to x64 systems that have SysWOW64. Skips for Windows 11 and ARM64.
+    The function preserves original file ACLs by backing them up and restoring them after the copy.
+
+.OUTPUTS
+    None. Logs copy operations and ACL changes via Update-Log.
+#>
 Function Copy-OneDrive {
     Update-Log -data 'Updating OneDrive x86 client' -class information
     $mountpath = $WPFMISMountTextBox.text
@@ -2333,7 +4019,37 @@ Function Copy-OneDrive {
     }
 }
 
-#Function to copy new OneDrive client installer to mount path (x64 or ARM64)
+<#
+.SYNOPSIS
+    Copies the updated x64 or ARM64 OneDrive installer to the mounted Windows image (System32).
+
+.DESCRIPTION
+    Copies the x64 or ARM64 OneDrive installer from the updates folder to the System32 directory in
+    a mounted Windows image. The function automatically detects the target architecture (x64 or ARM64)
+    and uses the appropriate installer. Like Copy-OneDrive, this function handles ACL (Access Control List)
+    modifications to enable the copy operation, then restores the original permissions. It includes
+    validation to ensure both the source installer and target file exist before attempting the copy.
+
+.PARAMETER None
+    This function uses global variables for configuration:
+    - $global:workdir: The working directory containing the OneDrive x64/ARM64 installer
+    - $WPFMISMountTextBox.text: The path to the mounted Windows image
+    - $WPFSourceWimArchTextBox.text: The architecture of the target image (x64 or ARM64)
+
+.EXAMPLE
+    Copy-OneDrivex64
+    Copies the x64 or ARM64 OneDrive installer to the mounted image's System32 folder based on target architecture.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: A mounted Windows image and a downloaded x64 or ARM64 OneDrive installer.
+    Automatically selects the correct installer based on the target WIM architecture.
+    The function preserves original file ACLs by backing them up and restoring them after the copy.
+
+.OUTPUTS
+    None. Logs copy operations and ACL changes via Update-Log.
+#>
 Function Copy-OneDrivex64 {
     Update-Log -data 'Updating OneDrive x64/ARM64 client' -class information
     $mountpath = $WPFMISMountTextBox.text
@@ -2409,6 +4125,69 @@ Function Copy-OneDrivex64 {
 }
 
 #Function to call the next three Functions. This determines WinOS and WinVer and calls the Function
+<#
+.SYNOPSIS
+    Routes Language Pack, Local Experience Pack, or Features On Demand selection based on type.
+
+.DESCRIPTION
+    Determines the appropriate import source folder based on the specified type and the detected
+    Windows version. Validates that the source folder exists before routing to the appropriate
+    selection function (Language Packs, Local Experience Packs, or Features On Demand).
+    Handles version compatibility mapping for Windows 10 builds.
+
+.PARAMETER Type
+    The type of content to select. Valid values:
+    - 'LP' for Language Packs
+    - 'LXP' for Local Experience Packs
+    - 'FOD' for Features On Demand
+
+.EXAMPLE
+    Select-LPFODCriteria -Type 'LP'
+    Routes to language pack selection if source is available.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: Properly structured imports directory with Lang and FODs subfolders.
+
+.OUTPUTS
+    None. Routes to appropriate selection function.
+#>
+<#
+.SYNOPSIS
+    Routes language pack, local experience pack, or features on demand selection based on type criteria.
+
+.DESCRIPTION
+    Determines the appropriate selection function to call based on the provided type parameter.
+    Validates that the required source directories exist before proceeding with selection.
+    Handles version normalization for Windows 10 versions (2009, 20H2, 21H1, 21H2, 22H2 map to 2004).
+    Routes to Select-LanguagePacks, Select-LocalExperiencePack, or Select-FeaturesOnDemand accordingly.
+
+.PARAMETER Type
+    The type of content to select. Valid values:
+    - 'LP': Language Packs
+    - 'LXP': Local Experience Packs
+    - 'FOD': Features On Demand
+
+.EXAMPLE
+    Select-LPFODCriteria -Type 'LP'
+    Routes to Select-LanguagePacks for the current WIM's OS and version.
+
+.EXAMPLE
+    Select-LPFODCriteria -Type 'FOD'
+    Routes to Select-FeaturesOnDemand after validating FOD source directory exists.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: Get-WindowsType, Update-Log, Select-LanguagePacks, Select-LocalExperiencePack, Select-FeaturesOnDemand
+    Validates paths in: $global:workdir\imports\Lang\{OS}\{Version}\LanguagePacks
+                        $global:workdir\imports\Lang\{OS}\{Version}\localexperiencepack
+                        $global:workdir\imports\FODs\{OS}\{Version}\
+
+.OUTPUTS
+    None. Calls appropriate selection function or logs error if source not found.
+#>
 Function Select-LPFODCriteria($Type) {
 
     $WinOS = Get-WindowsType
@@ -2446,7 +4225,62 @@ Function Select-LPFODCriteria($Type) {
     }
 }
 
-#Function to select langauge packs for injection
+<#
+.SYNOPSIS
+    Displays available language packs for selection and adds them to the form list.
+
+.DESCRIPTION
+    Retrieves language pack files from the import directory for the specified Windows version.
+    Displays available language packs in a grid view dialog for multi-select.
+    Adds selected items to the form's language pack listbox for injection into the image.
+
+.PARAMETER winver
+    The Windows version (e.g., '22H2', '23H2', '2004').
+
+.PARAMETER WinOS
+    The Windows operating system type ('Windows 10', 'Windows 11', 'Windows Server').
+
+.EXAMPLE
+    Select-LanguagePacks -winver '22H2' -WinOS 'Windows 10'
+    Displays available language packs for Windows 10 22H2.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Updates: $WPFCustomLBLangPacks listbox control
+    Source directory structure: imports\lang\{WinOS}\{winver}\LanguagePacks\
+
+.OUTPUTS
+    None. Updates form listbox.
+#>
+<#
+.SYNOPSIS
+    Displays available language packs for selection and adds them to the form list.
+
+.DESCRIPTION
+    Retrieves language pack (.cab) files from the import directory for the specified Windows version.
+    Displays available language packs in a grid view dialog for multi-select.
+    Adds selected items to the form's language pack listbox for injection into the WIM image.
+
+.PARAMETER winver
+    The Windows version (e.g., '22H2', '23H2', '2004', '1909').
+
+.PARAMETER WinOS
+    The Windows operating system type ('Windows 10', 'Windows 11', 'Windows Server').
+
+.EXAMPLE
+    Select-LanguagePacks -winver '22H2' -WinOS 'Windows 10'
+    Displays available Language Packs for Windows 10 22H2.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Updates: $WPFCustomLBLangPacks listbox control
+    Source directory structure: imports\lang\{WinOS}\{winver}\LanguagePacks\
+
+.OUTPUTS
+    None. Updates form listbox.
+#>
 Function Select-LanguagePacks($winver, $WinOS) {
 
     $LPSourceFolder = $global:workdir + '\imports\lang\' + $WinOS + '\' + $winver + '\' + 'LanguagePacks' + '\'
@@ -2455,7 +4289,62 @@ Function Select-LanguagePacks($winver, $WinOS) {
     foreach ($item in $items) { $WPFCustomLBLangPacks.Items.Add($item.name) }
 }
 
-#Function to select LXP packs for injection
+<#
+.SYNOPSIS
+    Displays available Local Experience Packs for selection and adds them to the form list.
+
+.DESCRIPTION
+    Retrieves Local Experience Pack (LXP) files from the import directory for the specified Windows version.
+    Displays available LXP files in a grid view dialog for multi-select.
+    Adds selected items to the form's LXP listbox for injection into the image.
+
+.PARAMETER winver
+    The Windows version (e.g., '22H2', '23H2', '2004').
+
+.PARAMETER WinOS
+    The Windows operating system type ('Windows 10', 'Windows 11', 'Windows Server').
+
+.EXAMPLE
+    Select-LocalExperiencePack -winver '23H2' -WinOS 'Windows 11'
+    Displays available Local Experience Packs for Windows 11 23H2.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Updates: $WPFCustomLBLEP listbox control
+    Source directory structure: imports\lang\{WinOS}\{winver}\localexperiencepack\
+
+.OUTPUTS
+    None. Updates form listbox.
+#>
+<#
+.SYNOPSIS
+    Displays available Local Experience Packs for selection and adds them to the form list.
+
+.DESCRIPTION
+    Retrieves Local Experience Pack (LXP) files from the import directory for the specified Windows version.
+    Displays available LXP files in a grid view dialog for multi-select.
+    Adds selected items to the form's LXP listbox for injection into the image.
+
+.PARAMETER winver
+    The Windows version (e.g., '22H2', '23H2', '2004', '1909').
+
+.PARAMETER WinOS
+    The Windows operating system type ('Windows 10', 'Windows 11', 'Windows Server').
+
+.EXAMPLE
+    Select-LocalExperiencePack -winver '23H2' -WinOS 'Windows 11'
+    Displays available Local Experience Packs for Windows 11 23H2.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Updates: $WPFCustomLBLEP listbox control
+    Source directory structure: imports\lang\{WinOS}\{winver}\localexperiencepack\
+
+.OUTPUTS
+    None. Updates form listbox.
+#>
 Function Select-LocalExperiencePack($winver, $WinOS) {
 
     $LPSourceFolder = $global:workdir + '\imports\lang\' + $WinOS + '\' + $winver + '\' + 'localexperiencepack' + '\'
@@ -2464,8 +4353,66 @@ Function Select-LocalExperiencePack($winver, $WinOS) {
     $items = (Get-ChildItem -Path $LPSourceFolder | Select-Object -Property Name | Out-GridView -Title 'Select Local Experience Packs' -PassThru)
     foreach ($item in $items) { $WPFCustomLBLEP.Items.Add($item.name) }
 }
-#Hey Donna
-#Function to select FODs for injection
+<#
+.SYNOPSIS
+    Displays available Features On Demand (FOD) for selection and adds them to the form list.
+
+.DESCRIPTION
+    Retrieves Features On Demand (FOD) capability identifiers for the specified Windows version.
+    Displays available FODs in a grid view dialog for multi-select.
+    Adds selected FOD capabilities to the form's FOD listbox for injection into the image.
+    FODs are Windows capabilities that can be added to an image (e.g., NetFx3, Speech, etc.).
+
+.PARAMETER winver
+    The Windows version (e.g., '22H2', '23H2', '2004').
+
+.PARAMETER WinOS
+    The Windows operating system type ('Windows 10', 'Windows 11', 'Windows Server').
+
+.EXAMPLE
+    Select-FeaturesOnDemand -winver '22H2' -WinOS 'Windows 10'
+    Displays available Features On Demand for Windows 10 22H2.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Updates: $WPFCustomLBFOD listbox control
+    FODs are specified using their capability identifiers (e.g., 'Browser.InternetExplorer~~~~0.0.11.0').
+    Source directory structure: imports\FODs\{WinOS}\{winver}\
+
+.OUTPUTS
+    None. Updates form listbox.
+#>
+<#
+.SYNOPSIS
+    Displays available Features On Demand (FOD) for selection and adds them to the form list.
+
+.DESCRIPTION
+    Retrieves Features On Demand (FOD) capability identifiers for the specified Windows version.
+    Displays available FODs in a grid view dialog for multi-select.
+    Adds selected FOD capabilities to the form's FOD listbox for injection into the image.
+    FODs are Windows capabilities that can be added to an image (e.g., NetFx3, Speech, Language features, etc.).
+
+.PARAMETER winver
+    The Windows version (e.g., '22H2', '23H2', '2004', '1909').
+
+.PARAMETER WinOS
+    The Windows operating system type ('Windows 10', 'Windows 11', 'Windows Server').
+
+.EXAMPLE
+    Select-FeaturesOnDemand -winver '22H2' -WinOS 'Windows 10'
+    Displays available Features On Demand for Windows 10 22H2.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Updates: $WPFCustomLBFOD listbox control
+    FODs are specified using their capability identifiers (e.g., 'Browser.InternetExplorer~~~~0.0.11.0').
+    Source directory structure: imports\FODs\{WinOS}\{winver}\
+
+.OUTPUTS
+    None. Updates form listbox.
+#>
 Function Select-FeaturesOnDemand($winver, $WinOS) {
     $Win10_1909_FODs = @('Accessibility.Braille~~~~0.0.1.0',
         'Analog.Holographic.Desktop~~~~0.0.1.0',
@@ -4160,6 +6107,32 @@ Function Select-FeaturesOnDemand($winver, $WinOS) {
 }
 
 #Function to apply the selected Langauge Packs to the mounted WIM
+<#
+.SYNOPSIS
+    Applies selected language packs to the mounted WIM image.
+
+.DESCRIPTION
+    Injects language pack (.cab) files that were previously selected and added to the form listbox
+    into the currently mounted WIM image. Uses Add-WindowsPackage to apply each language pack.
+    Normalizes Windows 10 version numbers (20H2, 21H1, 2009, 21H2, 22H2 map to 2004).
+    Supports demo mode for testing without actual injection.
+    Logs all operations and handles errors appropriately.
+
+.EXAMPLE
+    Install-LanguagePacks
+    Applies all language packs listed in $WPFCustomLBLangPacks to the mounted image.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: Add-WindowsPackage PowerShell cmdlet (DISM module)
+    Source path: imports\Lang\{WinOS}\{version}\LanguagePacks\
+    Mount point: Retrieved from $WPFMISMountTextBox
+    Demo mode: When $demomode is $true, shows what would be applied without actual injection
+
+.OUTPUTS
+    None. Logs progress and results via Update-Log function.
+#>
 Function Install-LanguagePacks {
     Update-Log -data 'Applying Language Packs...' -Class Information
 
@@ -4198,7 +6171,32 @@ Function Install-LanguagePacks {
     Update-Log -Data 'Language Pack injections complete' -Class Information
 }
 
-#Function to apply selected LXPs to the mounted WIM
+<#
+.SYNOPSIS
+    Applies selected Local Experience Packs to the mounted WIM image.
+
+.DESCRIPTION
+    Injects Local Experience Pack (.appx) files with their associated license files (.xml)
+    that were previously selected and added to the form listbox into the currently mounted WIM image.
+    Uses Add-ProvisionedAppxPackage to apply each LXP with its license file.
+    Normalizes Windows 10 version numbers (20H2, 21H1, 2009, 21H2, 22H2 map to 2004).
+    Logs all operations and handles errors appropriately.
+
+.EXAMPLE
+    Install-LocalExperiencePack
+    Applies all Local Experience Packs listed in $WPFCustomLBLEP to the mounted image.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: Add-ProvisionedAppxPackage PowerShell cmdlet (DISM module)
+    Source path: imports\Lang\{WinOS}\{version}\localexperiencepack\
+    Each LXP folder must contain: *.appx and *.xml (license) files
+    Mount point: Retrieved from $WPFMISMountTextBox
+
+.OUTPUTS
+    None. Logs progress and results via Update-Log function.
+#>
 Function Install-LocalExperiencePack {
     Update-Log -data 'Applying Local Experience Packs...' -Class Information
 
@@ -4229,7 +6227,32 @@ Function Install-LocalExperiencePack {
     Update-Log -Data 'Local Experience Pack injections complete' -Class Information
 }
 
-#Function to apply selected FODs to the mounted WIM
+<#
+.SYNOPSIS
+    Applies selected Features On Demand to the mounted WIM image.
+
+.DESCRIPTION
+    Injects Windows Features On Demand (FOD) capabilities that were previously selected and added
+    to the form listbox into the currently mounted WIM image.
+    Uses Add-WindowsCapability to apply each FOD with the specified source location.
+    Normalizes Windows 10 version numbers (20H2, 21H1, 2009, 21H2, 22H2 map to 2004).
+    Logs all operations and handles errors appropriately.
+
+.EXAMPLE
+    Install-FeaturesOnDemand
+    Applies all Features On Demand listed in $WPFCustomLBFOD to the mounted image.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: Add-WindowsCapability PowerShell cmdlet (DISM module)
+    Source path: imports\FODs\{WinOS}\{version}\
+    Mount point: Retrieved from $WPFMISMountTextBox
+    FOD capabilities use standardized naming (e.g., 'Browser.InternetExplorer~~~~0.0.11.0')
+
+.OUTPUTS
+    None. Logs progress and results via Update-Log function.
+#>
 Function Install-FeaturesOnDemand {
     Update-Log -data 'Applying Features On Demand...' -Class Information
 
@@ -4261,7 +6284,41 @@ Function Install-FeaturesOnDemand {
     Update-Log -Data 'Feature on Demand injections complete' -Class Information
 }
 
-#Function to import the selected LP's in to the Imports folder
+<#
+.SYNOPSIS
+    Imports language pack files into the application's import directory structure.
+
+.DESCRIPTION
+    Copies language pack (.cab) files from a source location into the application's organized
+    import directory structure (imports\Lang\{WinOS}\{version}\LanguagePacks\).
+    Creates the destination directory structure if it does not exist.
+    Handles version normalization: version 1903 is mapped to 1909 (same packages).
+    Supports batch importing of multiple language packs selected in the form listbox.
+
+.PARAMETER Winver
+    The Windows version for which the language packs are being imported (e.g., '22H2', '23H2', '2004', '1903', '1909').
+
+.PARAMETER LPSourceFolder
+    The source folder path containing the language pack files to be imported.
+
+.PARAMETER WinOS
+    The Windows operating system type ('Windows 10', 'Windows 11', 'Windows Server').
+
+.EXAMPLE
+    Import-LanguagePacks -Winver '22H2' -LPSourceFolder 'D:\LanguagePacks\' -WinOS 'Windows 10'
+    Imports all language packs from D:\LanguagePacks\ to the local import directory.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: Write access to $global:workdir\imports\ directory
+    Items to import: Retrieved from $WPFImportOtherLBList listbox
+    Version mapping: 1903 → 1909 (Windows 10 versions that use same packages)
+    Destination: $global:workdir\imports\Lang\{WinOS}\{version}\LanguagePacks\
+
+.OUTPUTS
+    None. Creates directory structure and copies files. Logs all operations via Update-Log function.
+#>
 Function Import-LanguagePacks($Winver, $LPSourceFolder, $WinOS) {
     Update-Log -Data 'Importing Language Packs...' -Class Information
 
@@ -4290,7 +6347,43 @@ Function Import-LanguagePacks($Winver, $LPSourceFolder, $WinOS) {
     Update-Log -Data 'Importation Complete' -Class Information
 }
 
-#Function to import the selected LXP's into the imports forlder
+<#
+.SYNOPSIS
+    Imports Local Experience Pack files into the application's import directory structure.
+
+.DESCRIPTION
+    Copies Local Experience Pack files from a source location into the application's organized
+    import directory structure (imports\Lang\{WinOS}\{version}\localexperiencepack\).
+    Creates the destination directory structure and per-package subdirectories as needed.
+    Handles version normalization: version 1903 is mapped to 1909 (same packages).
+    Each LXP package gets its own subdirectory containing the .appx and .xml files.
+    Supports batch importing of multiple LXP packages selected in the form listbox.
+
+.PARAMETER Winver
+    The Windows version for which the LXP files are being imported (e.g., '22H2', '23H2', '2004', '1903', '1909').
+
+.PARAMETER LPSourceFolder
+    The source folder path containing the Local Experience Pack files to be imported.
+
+.PARAMETER WinOS
+    The Windows operating system type ('Windows 10', 'Windows 11', 'Windows Server').
+
+.EXAMPLE
+    Import-LocalExperiencePack -Winver '23H2' -LPSourceFolder 'D:\LocalExperiencePacks\' -WinOS 'Windows 11'
+    Imports all Local Experience Packs from D:\LocalExperiencePacks\ to the local import directory.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: Write access to $global:workdir\imports\ directory
+    Items to import: Retrieved from $WPFImportOtherLBList listbox
+    Version mapping: 1903 → 1909 (Windows 10 versions that use same packages)
+    Destination: $global:workdir\imports\Lang\{WinOS}\{version}\localexperiencepack\{PackageName}\
+    Each LXP gets its own subdirectory with .appx and .xml license files
+
+.OUTPUTS
+    None. Creates directory structure and copies files. Logs all operations via Update-Log function.
+#>
 Function Import-LocalExperiencePack($Winver, $LPSourceFolder, $WinOS) {
 
     if ($winver -eq '1903') {
@@ -4328,7 +6421,50 @@ Function Import-LocalExperiencePack($Winver, $LPSourceFolder, $WinOS) {
     Update-log -Data 'Importation complete' -Class Information
 }
 
-#Function to import the contents of the selected FODs into the imports forlder
+<#
+.SYNOPSIS
+    Imports Features On Demand files into the application's import directory structure.
+
+.DESCRIPTION
+    Copies Features On Demand capability packages from a source location into the application's organized
+    import directory structure (imports\FODs\{WinOS}\{version}\).
+    Creates the destination directory structure if it does not exist.
+    Handles version normalization: version 1903 is mapped to 1909 (same packages).
+    Supports different import patterns for Windows 11 (individual FODs) vs other versions (language pack structure).
+    Also imports the metadata subfolder required for FOD functionality.
+    Supports batch importing of multiple FOD packages selected in the form listbox.
+
+.PARAMETER Winver
+    The Windows version for which the FOD files are being imported (e.g., '22H2', '23H2', '2004', '1903', '1909').
+
+.PARAMETER LPSourceFolder
+    The source folder path containing the Features On Demand files to be imported.
+
+.PARAMETER WinOS
+    The Windows operating system type ('Windows 10', 'Windows 11', 'Windows Server').
+
+.EXAMPLE
+    Import-FeatureOnDemand -Winver '22H2' -LPSourceFolder 'D:\FODs\' -WinOS 'Windows 10'
+    Imports all Features On Demand from D:\FODs\ to the local import directory.
+
+.EXAMPLE
+    Import-FeatureOnDemand -Winver '23H2' -LPSourceFolder 'D:\FODs\' -WinOS 'Windows 11'
+    Imports Windows 11 FODs using per-FOD import pattern.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: Write access to $global:workdir\imports\ directory
+    Items to import: Retrieved from $WPFImportOtherLBList listbox
+    Version mapping: 1903 → 1909 (Windows 10 versions that use same packages)
+    Destination: $global:workdir\imports\FODs\{WinOS}\{version}\
+    Windows 11: Imports individual FOD packages directly
+    Other versions: Imports language pack directory structure then metadata subfolder
+    Required: Source must include a \metadata\ subfolder
+
+.OUTPUTS
+    None. Creates directory structure and copies files. Logs all operations via Update-Log function.
+#>
 Function Import-FeatureOnDemand($Winver, $LPSourceFolder, $WinOS) {
 
     if ($winver -eq '1903') {
@@ -4391,6 +6527,28 @@ Function Update-ImportVersionCB {
 }
 
 #Function to select other object import source path
+<#
+.SYNOPSIS
+    Prompts user to select an import source folder for custom content.
+
+.DESCRIPTION
+    Opens a folder browser dialog to allow the user to select an import source directory
+    containing custom content to be imported into the WIM image processing.
+    Updates the form textbox with the selected folder path (including trailing backslash).
+
+.EXAMPLE
+    Select-ImportOtherPath
+    Opens folder dialog and updates import path field.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Updates: $WPFImportOtherTBPath
+    A trailing backslash is automatically appended to the selected path.
+
+.OUTPUTS
+    None. Updates form variable.
+#>
 Function Select-ImportOtherPath {
     Add-Type -AssemblyName System.Windows.Forms
     $browser = New-Object System.Windows.Forms.FolderBrowserDialog
@@ -4402,6 +6560,37 @@ Function Select-ImportOtherPath {
 }
 
 #Function to allow user to pause MAke it so process
+<#
+.SYNOPSIS
+    Pauses the image build process and prompts the user to continue or cancel.
+
+.DESCRIPTION
+    Displays a Windows MessageBox dialog that interrupts the WIM customization workflow,
+    allowing the user to inspect the current state before proceeding. This interactive
+    pause point is typically used after mounting the WIM or before dismounting, giving
+    administrators an opportunity to manually verify or modify the mounted image.
+    The user can choose to continue the build process or cancel and discard all changes.
+    This function supports the pause checkboxes in the MakeItSo workflow.
+
+.EXAMPLE
+    $result = Suspend-MakeItSo
+    if ($result -eq 'Yes') { Write-Host 'Continuing with build...' }
+    Pauses execution and waits for user decision, then continues based on response.
+
+.EXAMPLE
+    Suspend-MakeItSo
+    Displays pause dialog during image customization workflow.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function is called by Invoke-MakeItSo when pause options are enabled.
+    Requires Windows Forms assembly for MessageBox display.
+    User selections: 'Yes' continues the build, 'No' discards the WIM and aborts.
+
+.OUTPUTS
+    System.String. Returns 'Yes' if user chooses to continue, 'No' if user chooses to cancel.
+#>
 Function Suspend-MakeItSo {
     $MISPause = ([System.Windows.MessageBox]::Show('Click Yes to continue the image build. Click No to cancel and discard the wim file.', 'WIM Witch Paused', 'YesNo', 'Warning'))
     if ($MISPause -eq 'Yes') { return 'Yes' }
@@ -4409,7 +6598,46 @@ Function Suspend-MakeItSo {
     if ($MISPause -eq 'No') { return 'No' }
 }
 
-#Function to run a powershell script with supplied paramenters
+<#
+.SYNOPSIS
+    Executes a custom PowerShell script with specified parameters during the image build process.
+
+.DESCRIPTION
+    Invokes a user-supplied PowerShell script at designated points in the WIM customization workflow.
+    This function enables advanced customization scenarios by allowing administrators to inject
+    custom logic and modifications that aren't covered by WIMWitch-tNG's built-in features.
+    Scripts can be executed at three different stages: after image mount, before image dismount,
+    or on build completion. The function combines the file path and parameters into a single
+    command string, executes it using Invoke-Expression, and logs success or failure.
+
+.PARAMETER file
+    The full path to the PowerShell script file (.ps1) to execute.
+    This should be a valid, existing PowerShell script file.
+
+.PARAMETER parameter
+    Optional parameters to pass to the script. These are appended to the script path
+    and can include command-line arguments, switches, or named parameters that the
+    target script accepts. Can be an empty string if no parameters are needed.
+
+.EXAMPLE
+    Start-Script -file 'C:\Scripts\CustomizeImage.ps1' -parameter '-MountPath C:\Mount'
+    Executes CustomizeImage.ps1 with the MountPath parameter.
+
+.EXAMPLE
+    Start-Script 'D:\Tools\ApplyTweaks.ps1' ''
+    Runs ApplyTweaks.ps1 without any parameters.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function is called by Invoke-MakeItSo when custom script execution is enabled.
+    The script runs in the current PowerShell session context with access to WIMWitch-tNG variables.
+    Errors during script execution are caught and logged but do not halt the image build process.
+    Use with caution as scripts have full access to the mounted image and system.
+
+.OUTPUTS
+    None. Logs execution status via Update-Log function with Information or Error classification.
+#>
 Function Start-Script($file, $parameter) {
     $string = "$file $parameter"
     try {
@@ -4422,6 +6650,32 @@ Function Start-Script($file, $parameter) {
 }
 
 #Function to select existing configMgr image package
+<#
+.SYNOPSIS
+    Retrieves and displays detailed information about a ConfigMgr OS image package.
+
+.DESCRIPTION
+    Queries the ConfigMgr SMS Provider to retrieve comprehensive details about an operating system image package,
+    including package ID, version, OS build number, distribution points, and configuration settings. Updates the
+    form controls with the retrieved information and logs all discovered properties. Detects Binary Differential
+    Replication and Package Share settings.
+
+.PARAMETER PackID
+    The ConfigMgr Package ID of the operating system image to retrieve information about.
+
+.EXAMPLE
+    Get-ImageInfo -PackID "NTP00001"
+    Retrieves and displays information for the OS image with Package ID NTP00001.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: ConfigMgr PowerShell module, valid site connection, and appropriate WMI permissions.
+    Updates multiple WPF form controls with retrieved image information.
+
+.OUTPUTS
+    None. Updates form controls and logging output.
+#>
 Function Get-ImageInfo {
     Param(
         [parameter(mandatory = $true)]
@@ -4491,7 +6745,30 @@ Function Get-ImageInfo {
     }
 }
 
-#Function to select DP's from ConfigMgr
+<#
+.SYNOPSIS
+    Displays ConfigMgr Distribution Points or Distribution Point Groups for selection.
+
+.DESCRIPTION
+    Connects to Configuration Manager and retrieves either individual Distribution Points or
+    Distribution Point Groups based on the form dropdown selection. Displays the list in a
+    grid view dialog for multi-select and adds selected items to the form listbox.
+    Requires ConfigMgr module and proper site connection.
+
+.EXAMPLE
+    Select-DistributionPoints
+    Displays DPs or DPGs based on form selection and adds chosen items to distribution list.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: ConfigMgr PowerShell module and valid site connection
+    Updates: $WPFCMLBDPs listbox control
+    Form selection: $WPFCMCBDPDPG determines DP vs DPG retrieval
+
+.OUTPUTS
+    None. Updates form listbox.
+#>
 Function Select-DistributionPoints {
     #set-ConfigMgrConnection
     Push-Location $CMDrive
@@ -4510,7 +6787,30 @@ Function Select-DistributionPoints {
     }
 }
 
-#Function to create the new image in ConfigMgr
+<#
+.SYNOPSIS
+    Creates a new operating system image package in ConfigMgr.
+
+.DESCRIPTION
+    Creates a new OS image package in ConfigMgr using the specified WIM file path and name from form controls.
+    Applies image properties including version, description, and Binary Differential Replication settings.
+    Distributes the package content to selected Distribution Points or Distribution Point Groups.
+    Saves the configuration with the assigned Package ID.
+
+.EXAMPLE
+    New-CMImagePackage
+    Creates a new OS image package in ConfigMgr using form values and distributes to selected DPs.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: ConfigMgr PowerShell module, valid site connection.
+    Prerequisites: WIM file path, image name, and distribution points must be configured in form controls.
+    Calls Set-ImageProperties to apply additional configuration settings.
+
+.OUTPUTS
+    None. Creates image package, distributes content, and saves configuration.
+#>
 Function New-CMImagePackage {
     #set-ConfigMgrConnection
     Push-Location $CMDrive
@@ -4554,7 +6854,29 @@ Function New-CMImagePackage {
     }
 }
 
-#Function to enable/disable options on ConfigMgr tab
+<#
+.SYNOPSIS
+    Enables or disables ConfigMgr tab UI controls based on selected image type.
+
+.DESCRIPTION
+    Dynamically enables and disables form controls on the ConfigMgr tab based on the selected image type
+    (New Image, Update Existing Image, or Disabled). Configures the appropriate UI state for each operation mode,
+    controlling access to distribution points, package properties, and configuration options.
+    Logs the selected ConfigMgr feature mode.
+
+.EXAMPLE
+    Enable-ConfigMgrOptions
+    Configures UI controls based on current ConfigMgr image type selection.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Triggered by changes to the WPFCMCBImageType dropdown control.
+    Controls visibility and enabled state of: distribution points, image properties, versioning, and deployment options.
+
+.OUTPUTS
+    None. Updates form control states.
+#>
 Function Enable-ConfigMgrOptions {
 
     #"Disabled","New Image","Update Existing Image"
@@ -4634,7 +6956,29 @@ Function Enable-ConfigMgrOptions {
 
 }
 
-#Function to update DP's when updating existing image file in ConfigMgr
+<#
+.SYNOPSIS
+    Updates an existing ConfigMgr OS image package and refreshes distribution points.
+
+.DESCRIPTION
+    Updates an existing operating system image package in ConfigMgr by refreshing the package source,
+    reloading image properties from the WIM file, and updating distribution points with the new content.
+    Applies current image property settings and saves the updated configuration.
+
+.EXAMPLE
+    Update-CMImage
+    Refreshes the image package specified in the form's Package ID field.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: ConfigMgr PowerShell module, valid site connection, and WMI permissions.
+    Uses WPFCMTBPackageID control to identify the package to update.
+    Calls Set-ImageProperties to apply configuration updates.
+
+.OUTPUTS
+    None. Updates ConfigMgr package and distribution points.
+#>
 Function Update-CMImage {
     #set-ConfigMgrConnection
     Push-Location $CMDrive
@@ -4656,7 +7000,28 @@ Function Update-CMImage {
     }
 }
 
-#Function to enable disable & options on the Software Update Catalog tab
+<#
+.SYNOPSIS
+    Configures UI controls on the Software Update Catalog tab based on selected catalog source.
+
+.DESCRIPTION
+    Enables or disables update-related form controls based on the selected catalog source (None, OSDSUS, or ConfigMgr).
+    Adjusts availability of update download buttons, update checking options, and catalog-specific features.
+    Logs the selected update catalog source and performs necessary initialization checks.
+
+.EXAMPLE
+    Invoke-UpdateTabOptions
+    Configures update tab controls based on current catalog source selection.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Triggered by changes to WPFUSCBSelectCatalogSource dropdown control.
+    Calls Invoke-OSDCheck when OSDSUS is selected to validate installation.
+
+.OUTPUTS
+    None. Updates form control states.
+#>
 Function Invoke-UpdateTabOptions {
 
     if ($WPFUSCBSelectCatalogSource.SelectedItem -eq 'None' ) {
@@ -4697,6 +7062,37 @@ Function Invoke-UpdateTabOptions {
 
 }
 
+<#
+.SYNOPSIS
+    Downloads Microsoft update packages from ConfigMgr catalog.
+
+.DESCRIPTION
+    Downloads update content files (CAB and MSU) from the ConfigMgr software update catalog based on update name
+    and classification. Supports multiple update types including Cumulative Updates (LCU), Servicing Stack Updates (SSU),
+    .NET Framework updates, Adobe updates, and Dynamic Updates. Filters out incompatible packages (express, baseless,
+    FOD metadata servicing). Validates CAB files for update.mum metadata. Organizes downloads by update class and name.
+
+.PARAMETER FilePath
+    The destination path where update files will be downloaded and organized into subfolders.
+
+.PARAMETER UpdateName
+    The localized display name of the update to download from the ConfigMgr catalog.
+
+.EXAMPLE
+    Invoke-MSUpdateItemDownload -FilePath "C:\Updates\" -UpdateName "2024-01 Cumulative Update for Windows 10 Version 22H2 for x64-based Systems (KB5034441)"
+    Downloads the specified cumulative update to the designated path.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: ConfigMgr PowerShell module, valid site connection, and WMI access.
+    Supports optional updates when WPFUpdatesCBEnableOptional is checked.
+    Supports Dynamic Updates when WPFUpdatesCBEnableDynamic is checked.
+    Skips previously downloaded files.
+
+.OUTPUTS
+    System.Int32. Returns 0 on success, 1 on error, 2 if update not found.
+#>
 Function Invoke-MSUpdateItemDownload {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -4818,12 +7214,12 @@ Function Invoke-MSUpdateItemDownload {
                             Update-Log -Data "Skipping FodMetadataServicing package (not compatible with offline servicing): $($ContentItem.filename)" -Class Information
                             continue
                         }
-                        
+
                         if ($ContentItem.filename -like '*-express.cab') {
                             Update-Log -Data "Skipping express CAB (requires online servicing): $($ContentItem.filename)" -Class Information
                             continue
                         }
-                        
+
                         if ($ContentItem.filename -like '*-baseless.cab') {
                             Update-Log -Data "Skipping baseless CAB (requires baseline already installed): $($ContentItem.filename)" -Class Information
                             continue
@@ -4953,7 +7349,40 @@ Function Invoke-MSUpdateItemDownload {
     return $ReturnValue | Out-Null
 }
 
-#Function to check for updates against ConfigMgr
+<#
+.SYNOPSIS
+    Retrieves and downloads non-superseded updates from ConfigMgr catalog for specified Windows product and version.
+
+.DESCRIPTION
+    Queries the ConfigMgr SMS Provider for non-superseded software updates matching the specified Windows product
+    (Windows 10, Windows 11, Windows Server) and version. Filters out feature updates, language packs, and edition-specific
+    updates. Downloads applicable updates including Cumulative Updates, Servicing Stack Updates, .NET updates, and
+    optionally Dynamic Updates. Supports Windows 10 (various versions), Windows 11, Windows Server 2016/2019/2022.
+
+.PARAMETER prod
+    The Windows product name: 'Windows 10', 'Windows 11', or 'Windows Server'.
+
+.PARAMETER ver
+    The version identifier (e.g., '22H2', '21H2', '1809', '1607').
+
+.EXAMPLE
+    Invoke-MEMCMUpdatecatalog -prod "Windows 10" -ver "22H2"
+    Downloads all current updates for Windows 10 version 22H2.
+
+.EXAMPLE
+    Invoke-MEMCMUpdatecatalog -prod "Windows 11" -ver "23H2"
+    Downloads all current updates for Windows 11 version 23H2.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: ConfigMgr PowerShell module, synchronized software update catalog.
+    Updates must be synchronized in ConfigMgr before they can be downloaded.
+    Respects WPFUpdatesCBEnableDynamic checkbox for Dynamic Update inclusion.
+
+.OUTPUTS
+    None. Downloads update files via Invoke-MSUpdateItemDownload.
+#>
 Function Invoke-MEMCMUpdatecatalog($prod, $ver) {
 
     #set-ConfigMgrConnection
@@ -5028,7 +7457,36 @@ Function Invoke-MEMCMUpdatecatalog($prod, $ver) {
     }
 }
 
-#Function to check for supersedence against ConfigMgr
+<#
+.SYNOPSIS
+    Checks downloaded updates for supersedence and removes outdated update files.
+
+.DESCRIPTION
+    Scans the local update directory structure for previously downloaded updates and verifies their supersedence
+    status against the ConfigMgr software update catalog. Removes update files that have been superseded by newer
+    updates. Cleans up empty folders after removing superseded content. Helps maintain a lean update repository
+    with only current, applicable updates.
+
+.PARAMETER prod
+    The Windows product name: 'Windows 10', 'Windows 11', or 'Windows Server'.
+
+.PARAMETER Ver
+    The version identifier (e.g., '22H2', '21H2', '1809', '1607').
+
+.EXAMPLE
+    Invoke-MEMCMUpdateSupersedence -prod "Windows 10" -Ver "22H2"
+    Removes superseded updates from the Windows 10 22H2 update folder.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: ConfigMgr PowerShell module, valid site connection.
+    Operates on the local update directory structure: updates\product\version\class\updatename
+    Should be run before downloading new updates to maintain folder cleanliness.
+
+.OUTPUTS
+    None. Deletes superseded update files and empty folders.
+#>
 Function Invoke-MEMCMUpdateSupersedence($prod, $Ver) {
     #set-ConfigMgrConnection
     Push-Location $CMDrive
@@ -5122,7 +7580,33 @@ Function Invoke-OSDCheck {
     Compare-OSDSUSVer #determines if an update of OSDSUS can be applied
 }
 
-#Function to update image version, properties, and binary delta replication
+<#
+.SYNOPSIS
+    Configures properties for a ConfigMgr operating system image package.
+
+.DESCRIPTION
+    Updates operating system image package properties in ConfigMgr including version, description,
+    Binary Differential Replication, and deployment share settings. Supports both automatic and manual
+    version/description assignment. Auto-description mode generates a description listing all applied
+    customizations (updates, language packs, drivers, Autopilot, etc.).
+
+.PARAMETER PackageID
+    The ConfigMgr Package ID of the operating system image to configure.
+
+.EXAMPLE
+    Set-ImageProperties -PackageID "NTP00001"
+    Applies configured properties to the OS image package NTP00001.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: ConfigMgr PowerShell module and valid site connection.
+    Reads configuration from form controls: version, description, Binary Diff Replication, and Deployment Share.
+    Auto-version mode uses current date; auto-description mode builds from enabled customizations.
+
+.OUTPUTS
+    None. Updates ConfigMgr package properties.
+#>
 Function Set-ImageProperties($PackageID) {
     #write-host $PackageID
     #set-ConfigMgrConnection
@@ -5192,7 +7676,31 @@ Function Set-ImageProperties($PackageID) {
 
 }
 
-#Function to detect and set CM site properties
+<#
+.SYNOPSIS
+    Detects ConfigMgr installation and retrieves site configuration.
+
+.DESCRIPTION
+    Attempts to locate ConfigMgr site information from multiple sources in priority order:
+    1. Local registry (HKLM\SOFTWARE\Microsoft\SMS\Identification)
+    2. Saved configuration file (ConfigMgr\SiteInfo.XML)
+    Sets global ConfigMgr variables (SiteCode, SiteServer, CMDrive) and populates form controls.
+    Optionally enables ConfigMgr options if called during new image creation.
+
+.EXAMPLE
+    $result = Find-ConfigManager
+    Detects ConfigMgr and returns 0 if found, 1 if not detected.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Sets global variables: $global:SiteCode, $global:SiteServer, $global:CMDrive
+    Updates form controls: WPFCMTBSiteServer, WPFCMTBSitecode
+    Enables ConfigMgr options if $CM variable equals 'New'.
+
+.OUTPUTS
+    System.Int32. Returns 0 if ConfigMgr detected, 1 if not detected.
+#>
 Function Find-ConfigManager() {
 
     If ((Test-Path -Path HKLM:\SOFTWARE\Microsoft\SMS\Identification) -eq $true) {
@@ -5260,7 +7768,30 @@ Function Find-ConfigManager() {
 
 }
 
-#Function to manually set the CM site properties
+<#
+.SYNOPSIS
+    Manually configures ConfigMgr site properties from form input.
+
+.DESCRIPTION
+    Sets ConfigMgr site connection properties using values entered in form controls.
+    Creates and saves site configuration to XML file for persistence across sessions.
+    Establishes global ConfigMgr variables (SiteCode, SiteServer, CMDrive) and logs the configuration.
+    Optionally enables ConfigMgr UI options if called during new image creation.
+
+.EXAMPLE
+    $result = Set-ConfigMgr
+    Configures ConfigMgr using form values and returns 0 on success, 1 on failure.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Sets global variables: $global:SiteCode, $global:SiteServer, $global:CMDrive
+    Saves configuration to: workdir\ConfigMgr\SiteInfo.xml
+    Enables ConfigMgr options if $CM variable equals 'New'.
+
+.OUTPUTS
+    System.Int32. Returns 0 on success, 1 on error.
+#>
 Function Set-ConfigMgr() {
 
     try {
@@ -5309,7 +7840,29 @@ Function Set-ConfigMgr() {
 
 }
 
-#Function to detect and import CM PowerShell module
+<#
+.SYNOPSIS
+    Imports the ConfigMgr PowerShell module.
+
+.DESCRIPTION
+    Locates and imports the Configuration Manager PowerShell module using the SMS_ADMIN_UI_PATH environment variable.
+    This module is required for all ConfigMgr cmdlet operations including package creation, distribution,
+    and site management. Validates successful import and logs the result.
+
+.EXAMPLE
+    $result = Import-CMModule
+    Imports ConfigMgr module and returns 0 on success, 1 on failure.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: ConfigMgr Console installed on the local machine.
+    Depends on SMS_ADMIN_UI_PATH environment variable set by ConfigMgr Console installation.
+    Module path: SMS_ADMIN_UI_PATH\ConfigurationManager.psd1
+
+.OUTPUTS
+    System.Int32. Returns 0 if module imported successfully, 1 on error.
+#>
 Function Import-CMModule() {
     try {
         $path = (($env:SMS_ADMIN_UI_PATH -replace 'i386', '') + 'ConfigurationManager.psd1')
@@ -5327,6 +7880,37 @@ Function Import-CMModule() {
 }
 
 #Function to apply the start menu layout
+<#
+.SYNOPSIS
+    Installs a custom Start Menu layout file into the mounted Windows image.
+
+.DESCRIPTION
+    Copies a custom Start Menu layout file into the mounted Windows image's default user profile.
+    The function automatically handles Windows 10 (XML format) and Windows 11 (JSON format) layouts.
+    Ensures the file is properly renamed to the correct layout filename based on the Windows version:
+    - Windows 10: LayoutModification.xml
+    - Windows 11: LayoutModification.json
+
+.PARAMETER
+    This function uses form variables:
+    - $WPFMISMountTextBox.Text: Path to mounted Windows image
+    - $WPFCustomTBStartMenu.Text: Path to source Start Menu layout file
+    - $Windowstype: Windows version (Windows 11 or Windows 10)
+
+.EXAMPLE
+    Install-StartLayout
+    Installs the selected Start Menu layout file into the mounted image.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Target path: [MountPoint]\users\default\appdata\local\microsoft\windows\shell
+    Windows 10 uses XML format, Windows 11 uses JSON format.
+    File is automatically renamed if needed to match expected filename.
+
+.OUTPUTS
+    None. Logs operations via Update-Log function.
+#>
 Function Install-StartLayout {
     try {
         $startpath = $WPFMISMountTextBox.Text + '\users\default\appdata\local\microsoft\windows\shell'
@@ -5363,6 +7947,35 @@ Function Install-StartLayout {
 }
 
 #Function to apply the default application association
+<#
+.SYNOPSIS
+    Applies a default application associations XML file to the mounted Windows image.
+
+.DESCRIPTION
+    Uses DISM to import a default application associations XML configuration into the mounted
+    Windows image. This XML file defines which applications should be the default handlers for
+    specific file types and protocols. The associations are applied system-wide and affect all
+    user profiles in the deployed image.
+
+.PARAMETER
+    This function uses form variables:
+    - $WPFMISMountTextBox.text: Path to mounted Windows image
+    - $WPFCustomTBDefaultApp.text: Path to default app associations XML file
+
+.EXAMPLE
+    Install-DefaultApplicationAssociations
+    Applies the selected default application associations XML to the mounted image using DISM.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Uses DISM /Import-DefaultAppAssociations command.
+    XML file typically exported from Windows using DISM or Group Policy tools.
+    Changes take effect when the image is deployed and Windows starts.
+
+.OUTPUTS
+    None. Logs DISM operations via Update-Log function.
+#>
 Function Install-DefaultApplicationAssociations {
     try {
         Update-Log -Data 'Applying Default Application Association XML...'
@@ -5376,6 +7989,28 @@ Function Install-DefaultApplicationAssociations {
 }
 
 #Function to select default app association xml
+<#
+.SYNOPSIS
+    Prompts user to select an XML file containing default application associations.
+
+.DESCRIPTION
+    Opens a file dialog to allow the user to select a Windows default application associations XML file.
+    This file defines which applications handle specific file types and protocols.
+    Updates the form textbox with the selected file path and validates the file extension.
+
+.EXAMPLE
+    Select-DefaultApplicationAssociations
+    Opens file dialog to select default application associations XML file.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Updates: $WPFCustomTBDefaultApp
+    XML file is typically exported from Windows using Windows Settings or Group Policy.
+
+.OUTPUTS
+    None. Updates form variable.
+#>
 Function Select-DefaultApplicationAssociations {
 
     $Sourcexml = New-Object System.Windows.Forms.OpenFileDialog -Property @{
@@ -5394,7 +8029,31 @@ Function Select-DefaultApplicationAssociations {
     Update-Log -Data $text -class Information
 }
 
-#Function to select start menu xml
+<#
+.SYNOPSIS
+    Prompts user to select a Start Menu layout file (XML for Windows 10, JSON for Windows 11).
+
+.DESCRIPTION
+    Opens a file dialog to allow the user to select a Start Menu layout customization file.
+    The file format depends on the detected Windows version:
+    - Windows 10 and earlier: XML format (.xml extension)
+    - Windows 11: JSON format (.json extension)
+    Updates the form textbox with the selected file path and validates the file extension.
+
+.EXAMPLE
+    Select-StartMenu
+    Opens file dialog to select Start Menu layout file in appropriate format.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Updates: $WPFCustomTBStartMenu
+    Windows version detected via Get-WindowsType function.
+    XML/JSON files can be exported from Windows using Group Policy or custom tools.
+
+.OUTPUTS
+    None. Updates form variable.
+#>
 Function Select-StartMenu {
 
     $OS = Get-WindowsType
@@ -5437,7 +8096,30 @@ Function Select-StartMenu {
     Update-Log -Data $text -class Information
 }
 
-#Function to select registry files
+<#
+.SYNOPSIS
+    Prompts user to select one or more registry files to import.
+
+.DESCRIPTION
+    Opens a file dialog with multi-select enabled to allow the user to select one or more
+    Windows registry (.reg) files. Validates each file to ensure it has a .reg extension,
+    then adds valid files to the form's registry files listbox for injection into the image.
+    Invalid files are logged and skipped.
+
+.EXAMPLE
+    Select-RegFiles
+    Opens multi-select file dialog and adds selected .reg files to import list.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Updates: $WPFCustomLBRegistry listbox control
+    Supports multi-select for importing multiple registry files at once.
+    Only .reg format files are accepted.
+
+.OUTPUTS
+    None. Updates form listbox.
+#>
 Function Select-RegFiles {
 
     $Regfiles = New-Object System.Windows.Forms.OpenFileDialog -Property @{
@@ -5464,6 +8146,51 @@ Function Select-RegFiles {
 }
 
 #Function to apply registry files to mounted image
+<#
+.SYNOPSIS
+    Imports registry (.reg) files into the mounted Windows image's offline registry hives.
+
+.DESCRIPTION
+    Mounts the offline registry hives from the Windows image, processes and imports selected
+    .reg files by remapping registry paths to offline hive locations, then dismounts the hives.
+    Supports importing to HKCU (default user), HKU\.DEFAULT, HKLM\SOFTWARE, and HKLM\SYSTEM.
+
+    The function performs the following operations:
+    1. Mounts four offline registry hives:
+       - HKLM\OfflineDefaultUser (Users\Default\NTUser.dat)
+       - HKLM\OfflineDefault (Windows\System32\Config\DEFAULT)
+       - HKLM\OfflineSoftware (Windows\System32\Config\SOFTWARE)
+       - HKLM\OfflineSystem (Windows\System32\Config\SYSTEM)
+    2. Copies each .reg file to staging folder
+    3. Parses and replaces registry paths to point to offline hives
+    4. Imports modified .reg files using reg.exe
+    5. Dismounts all offline registry hives
+
+.PARAMETER
+    This function uses form and global variables:
+    - $WPFMISMountTextBox.text: Path to mounted Windows image
+    - $WPFCustomLBRegistry.items: ListBox containing paths to .reg files
+    - $global:workdir: Base working directory for staging files
+
+.EXAMPLE
+    Install-RegistryFiles
+    Imports all .reg files from the registry listbox into the mounted Windows image.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Registry path remapping:
+    - HKEY_CURRENT_USER → HKEY_LOCAL_MACHINE\OfflineDefaultUser
+    - HKEY_LOCAL_MACHINE\SOFTWARE → HKEY_LOCAL_MACHINE\OfflineSoftware
+    - HKEY_LOCAL_MACHINE\SYSTEM → HKEY_LOCAL_MACHINE\OfflineSystem
+    - HKEY_USERS\.DEFAULT → HKEY_LOCAL_MACHINE\OfflineDefault
+
+    Registry files are staged to: $global:workdir\staging\
+    Failure to dismount hives will prevent proper Windows image dismounting.
+
+.OUTPUTS
+    None. Logs all mount/dismount and import operations via Update-Log function.
+#>
 Function Install-RegistryFiles {
 
     #mount offline hives
@@ -5558,6 +8285,35 @@ Function Install-RegistryFiles {
 }
 
 #Function to augment close out window text
+<#
+.SYNOPSIS
+    Retrieves a random dad joke from the icanhazdadjoke.com API.
+
+.DESCRIPTION
+    Fetches a random dad joke from the public icanhazdadjoke.com REST API service.
+    Returns the joke as a text string for display or logging purposes. Provides a
+    lighthearted element to the application and can be used for user engagement
+    or Easter egg functionality.
+
+.EXAMPLE
+    Invoke-DadJoke
+    Returns a random dad joke such as: "Why don't scientists trust atoms? Because they make up everything!"
+
+.EXAMPLE
+    $joke = Invoke-DadJoke
+    Update-Log -Data $joke -Class Information
+    Retrieves a joke and logs it to the application log.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires internet connectivity to access icanhazdadjoke.com API.
+    API returns jokes in JSON format with 'joke' property containing the text.
+
+.OUTPUTS
+    System.String
+    Returns a random dad joke as a plain text string.
+#>
 Function Invoke-DadJoke {
     $header = @{accept = 'Application/json' }
     $joke = Invoke-RestMethod -Uri 'https://icanhazdadjoke.com' -Method Get -Headers $header
@@ -5565,6 +8321,37 @@ Function Invoke-DadJoke {
 }
 
 #Function to stage and build installer media
+<#
+.SYNOPSIS
+    Copies ISO media binaries from the import folder to a staging directory.
+
+.DESCRIPTION
+    Creates a staging folder for media and copies the appropriate OS-specific and version-specific
+    ISO binaries from the imports folder structure to the staging\media directory. These staged
+    files are then used as the foundation for building new Windows installation media and ISOs.
+    Detects Windows type (Windows 10, Windows 11, or Windows Server) automatically.
+
+.PARAMETER
+    This function uses global variables:
+    - $global:workdir: Base working directory path
+    - $MISWinVer: Windows version number for media files
+
+.EXAMPLE
+    Copy-StageIsoMedia
+    Stages media files for the current Windows type and version to $global:workdir\staging\media
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Creates directory: $global:workdir\staging\Media if it doesn't exist
+    Copies from: $global:workdir\imports\iso\[OS]\[Version]\*
+    Copies to: $global:workdir\staging\media\*
+    Requires ISO binaries to be present in the imports folder
+
+.OUTPUTS
+    None. Creates staging directory structure and copies media files.
+    Logs all operations via Update-Log function.
+#>
 Function Copy-StageIsoMedia {
     # if($WPFSourceWIMImgDesTextBox.Text -like '*Windows 10*'){$OS = 'Windows 10'}
     # if($WPFSourceWIMImgDesTextBox.Text -like '*Server*'){$OS = 'Windows Server'}
@@ -5599,6 +8386,38 @@ Function Copy-StageIsoMedia {
 }
 
 #Function to create the ISO file from staged installer media
+<#
+.SYNOPSIS
+    Creates a bootable Windows installation ISO file from staged media.
+
+.DESCRIPTION
+    Builds a bootable ISO file using the Windows ADK oscdimg.exe tool from previously staged
+    media files. Validates the existence of oscdimg.exe, ensures the ISO filename has proper
+    extension, and handles file naming conflicts by renaming existing files with backup extensions.
+    Uses EFI boot binaries for UEFI compatibility.
+
+.PARAMETER
+    This function uses global form variables:
+    - $WPFMISTBISOFileName: Desired ISO file name (with or without .iso extension)
+    - $WPFMISTBFilePath: Destination folder path for the ISO file
+
+.EXAMPLE
+    New-WindowsISO
+    Creates a bootable ISO from staged media using the configured filename and location.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires Windows ADK to be installed with oscdimg.exe available
+    Source media: $global:workdir\staging\media
+    Uses EFI boot file: efisys.bin from the staged media
+    Automatically appends .iso extension if not provided
+    Renames conflicting existing ISO files before creating new one
+
+.OUTPUTS
+    None. Creates ISO file at specified destination.
+    Logs all operations and errors via Update-Log function.
+#>
 Function New-WindowsISO {
 
     if ((Test-Path -Path ${env:ProgramFiles(x86)}'\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe' -PathType Leaf) -eq $false) {
@@ -5648,6 +8467,41 @@ Function Copy-UpgradePackage {
 }
 
 #Function to update the boot wim in the staged installer media folder
+<#
+.SYNOPSIS
+    Updates the boot.wim file with the latest servicing stack and cumulative updates.
+
+.DESCRIPTION
+    The Update-BootWIM function processes the boot.wim file by mounting each Windows PE image,
+    applying servicing stack updates (SSU) and latest cumulative updates (LCU), then exporting
+    and optimizing the updated image. This ensures the Windows PE environment used during
+    installation has the latest security and stability improvements.
+
+    The function performs the following operations:
+    - Creates a mount point in the staging directory
+    - Sets boot.wim file attributes to Normal
+    - Mounts each Windows PE image index in boot.wim
+    - Applies SSU and LCU updates to each image
+    - Dismounts and exports each updated image
+    - Overwrites the original boot.wim with the optimized version
+
+.PARAMETER None
+    This function does not accept parameters. It operates on the global $workdir variable.
+
+.EXAMPLE
+    Update-BootWIM
+    Processes and updates the boot.wim file in the staging media sources directory.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: Mounted WIM working directory via $global:workdir
+    Dependencies: Deploy-Updates, Update-Log functions
+    The function expects boot.wim to be located at $global:workdir\staging\media\sources\boot.wim
+
+.OUTPUTS
+    None. Updates boot.wim file in place and logs progress via Update-Log.
+#>
 Function Update-BootWIM {
     #create mount point in staging
 
@@ -5719,6 +8573,41 @@ Function Update-BootWIM {
 }
 
 #Function to update windows recovery in the mounted offline image
+<#
+.SYNOPSIS
+    Updates the Windows Recovery Environment (WinRE) WIM file within a mounted offline image.
+
+.DESCRIPTION
+    The Update-WinReWim function updates the winre.wim file that is embedded within a mounted
+    Windows offline image. This function is designed to apply updates to the recovery environment
+    that is used for system repair and recovery operations.
+
+    The intended workflow includes:
+    - Creating a mount point in the staging directory
+    - Copying winre.wim from the mounted offline image
+    - Changing file attributes of winre.wim to Normal
+    - Mounting the staged winre.wim
+    - Applying updates to the WinRE environment
+    - Dismounting the updated winre.wim
+    - Copying the updated WIM back to the mounted offline image
+
+.PARAMETER None
+    This function does not accept parameters. It operates on the global $workdir variable.
+
+.EXAMPLE
+    Update-WinReWim
+    Updates the Windows Recovery Environment within the mounted offline image.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Status: Placeholder function - implementation pending
+    Requires: Mounted Windows offline image and $global:workdir
+    The function is currently a stub with planned implementation noted in comments.
+
+.OUTPUTS
+    None. Will update winre.wim in the mounted offline image when implemented.
+#>
 Function Update-WinReWim {
     #create mount point in staging
     #copy winre from mounted offline image
@@ -5729,6 +8618,44 @@ Function Update-WinReWim {
 }
 
 #Function to retrieve windows version
+<#
+.SYNOPSIS
+    Extracts the Windows marketing version number from a build string.
+
+.DESCRIPTION
+    Parses the Windows build number from the WIM version textbox and converts it to
+    a marketing version identifier (22H2, 23H2, 24H2, 25H2). Uses regex pattern matching
+    to identify Windows 10 and Windows 11 versions. Logs detailed information about
+    version detection and warns about unsupported or unknown builds. Only Windows 10 22H2
+    and newer Windows 11 versions are supported.
+
+.EXAMPLE
+    Get-WinVersionNumber
+    Reads $WPFSourceWimVerTextBox and returns '23H2' for Windows 11 23H2.
+
+.EXAMPLE
+    Get-WinVersionNumber
+    Returns '22H2' and logs info note for any Windows 10 build 10.0.1904*.*
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: $WPFSourceWimVerTextBox form variable to be populated
+    Windows 10 Note: All builds 10.0.1904*.* are treated as 22H2 due to inconsistent
+    Microsoft build numbering across 2004/20H2/21H1/21H2/22H2 releases.
+    Supported Versions:
+    - Windows 10 22H2 (19045)
+    - Windows 11 23H2 (22631)
+    - Windows 11 24H2 (26100)
+    - Windows 11 25H2 (26200)
+
+.OUTPUTS
+    System.String
+    Returns marketing version number:
+    - '22H2', '23H2', '24H2', '25H2' for supported versions
+    - 'Unsupported' for deprecated Windows 10 builds
+    - 'Unknown Version' for unrecognized build numbers
+#>
 Function Get-WinVersionNumber {
     $buildnum = $null
     $wimBuild = $WPFSourceWimVerTextBox.text
@@ -5769,7 +8696,27 @@ Function Get-WinVersionNumber {
     return $buildnum
 }
 
-#funcation to select ISO creation path
+<#
+.SYNOPSIS
+    Prompts user to select a directory for saving ISO files.
+
+.DESCRIPTION
+    Opens a folder browser dialog to allow the user to select a destination directory
+    where ISO files will be created and saved. Updates the form textbox with the selected path.
+
+.EXAMPLE
+    Select-ISODirectory
+    Opens folder dialog and updates ISO output directory field.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Updates: $WPFMISTBFilePath
+    The selected directory must have sufficient free space for ISO file creation.
+
+.OUTPUTS
+    None. Updates form variable.
+#>
 Function Select-ISODirectory {
 
     Add-Type -AssemblyName System.Windows.Forms
@@ -5782,7 +8729,38 @@ Function Select-ISODirectory {
     Update-Log -Data 'ISO directory selected' -Class Information
 }
 
-#Function to determine if WIM is Win10 or Windows Server
+<#
+.SYNOPSIS
+    Determines the Windows OS type from the WIM image description.
+
+.DESCRIPTION
+    Analyzes the WIM image description field to identify whether the image contains
+    Windows 10, Windows 11, or Windows Server. Uses simple text pattern matching
+    on the image description to categorize the operating system type. This information
+    is used throughout the application for version-specific operations and resource selection.
+
+.EXAMPLE
+    Get-WindowsType
+    Returns 'Windows 11' if description contains 'Windows 11'
+
+.EXAMPLE
+    $osType = Get-WindowsType
+    Returns 'Windows Server' if description contains 'Windows Server'
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Requires: $WPFSourceWIMImgDesTextBox form variable to be populated
+    The function checks for OS identifiers in this order:
+    1. Windows 10
+    2. Windows Server
+    3. Windows 11
+
+.OUTPUTS
+    System.String
+    Returns one of: 'Windows 10', 'Windows 11', or 'Windows Server'
+    Returns $null if no match is found.
+#>
 Function Get-WindowsType {
     if ($WPFSourceWIMImgDesTextBox.text -like '*Windows 10*') { $type = 'Windows 10' }
     if ($WPFSourceWIMImgDesTextBox.text -like '*Windows Server*') { $type = 'Windows Server' }
@@ -5792,6 +8770,38 @@ Function Get-WindowsType {
 }
 
 #Function to check if ISO binaries exist
+<#
+.SYNOPSIS
+    Verifies that ISO media binaries exist and installs ConfigManager console extensions.
+
+.DESCRIPTION
+    Checks for the existence of required ISO media binaries for the current Windows OS type and version.
+    If binaries are found, installs ConfigManager console extensions (UpdateWWImage, EditWWImage, and
+    NewWWImage) into the SMS admin console. Logs appropriate warnings if required binaries are missing
+    and returns False to indicate unavailable media.
+
+.PARAMETER
+    This function uses global variables:
+    - $global:workdir: Base working directory for imports
+    - $env:SMS_ADMIN_UI_PATH: ConfigManager console installation path
+
+.EXAMPLE
+    Test-IsoBinariesExist
+    Checks for ISO binaries and installs console extensions if binaries are present.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Checks path: $global:workdir\imports\iso\[OSType]\[BuildNumber]\
+    Returns $false if binaries are not found
+    Installs XML extension files to ConfigManager console if binaries exist
+    Creates required console extension directories if needed
+    Requires ConfigManager console to be installed for extension installation
+
+.OUTPUTS
+    Boolean. Returns $false if ISO binaries are not found.
+    Returns $null (implicit $true) if binaries exist and extensions are installed successfully.
+#>
 Function Test-IsoBinariesExist {
     $buildnum = Get-WinVersionNumber
     $OSType = get-Windowstype
@@ -5835,6 +8845,32 @@ Function Test-IsoBinariesExist {
 }
 
 #Function to handle 32-Bit PowerSehell
+<#
+.SYNOPSIS
+    Validates and corrects PowerShell architecture compatibility with the operating system.
+
+.DESCRIPTION
+    Detects if PowerShell is running in 32-bit mode on a 64-bit operating system.
+    If a mismatch is detected, automatically relaunches the script in the correct 64-bit
+    PowerShell session, preserving any command-line arguments and execution context.
+    This ensures WIM Witch runs with full access to 64-bit system resources and APIs.
+
+.EXAMPLE
+    Invoke-ArchitectureCheck
+    Checks and corrects PowerShell architecture if needed.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function respects command-line parameters:
+    - Auto mode: Preserved with -auto -autofile parameters
+    - Configuration Manager mode: Preserved with -CM parameter values (Edit/New)
+    Should be invoked at script initialization before other operations.
+    Relaunch path: $env:WINDIR\SysNative\WindowsPowerShell\v1.0\powershell.exe
+
+.OUTPUTS
+    None. Exits script during relaunch if 32-bit mismatch detected.
+#>
 Function Invoke-ArchitectureCheck {
     if ([Environment]::Is64BitProcess -ne [Environment]::Is64BitOperatingSystem) {
 
@@ -5950,6 +8986,34 @@ Function Invoke-2XXXPreReq {
 }
 
 #Function to display text notification to end user
+<#
+.SYNOPSIS
+    Logs a visual separator in the application log for improved readability.
+
+.DESCRIPTION
+    Creates a visual break in the log output by writing two lines of asterisks.
+    This provides visual separation between different operational sections or phases,
+    making logs easier to read and navigate. Often used to mark the beginning or end
+    of significant operations or to draw attention to important log sections.
+
+.EXAMPLE
+    Invoke-TextNotification
+    Writes two comment lines of asterisks to the log.
+
+.EXAMPLE
+    Update-Log -Data 'Starting new operation' -Class Information
+    Invoke-TextNotification
+    Marks the start of a new operation with visual separation.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    Uses Update-Log function with 'Comment' class for formatting.
+    Each line contains 33 asterisk characters.
+
+.OUTPUTS
+    None. Writes formatted separator lines to the application log.
+#>
 Function Invoke-TextNotification {
     Update-Log -data '*********************************' -class Comment
     Update-Log -data '*********************************' -class Comment
@@ -5959,6 +9023,66 @@ Function Invoke-TextNotification {
 # Legacy Windows 10 versions are no longer supported
 
 #Function for the Make it So button
+<#
+.SYNOPSIS
+    Orchestrates the complete Windows image customization and build process.
+
+.DESCRIPTION
+    This is the primary orchestration function that coordinates all aspects of WIM image creation
+    and customization in WIMWitch-tNG. It performs comprehensive validation, executes the multi-stage
+    build workflow, and handles all image modifications including mounting, patching, driver injection,
+    application removal, and exporting. The function processes GUI selections or configuration file
+    settings to create a fully customized Windows deployment image.
+
+    The workflow includes:
+    - Preflight validation (mount path, file names, free space, dependencies)
+    - Source WIM copying and index selection
+    - WIM mounting and verification
+    - Language packs, Features on Demand, and Local Experience Packs injection
+    - .NET Framework binary injection
+    - Autopilot JSON provisioning
+    - Driver injection from multiple sources
+    - Default application associations and Start Menu layout customization
+    - Registry file application
+    - Windows Update integration (SSU, LCU, Optional, Dynamic)
+    - OneDrive installer updates
+    - AppX package removal
+    - Custom PowerShell script execution at configurable stages
+    - User-interactive pause points (optional)
+    - WIM dismount and export
+    - ConfigMgr integration (package creation/update)
+    - Boot.WIM updates
+    - ISO creation
+    - Upgrade package preparation
+
+.PARAMETER appx
+    An array containing the list of AppX packages to remove from the image.
+    This parameter is typically populated from the selected items in the AppX removal
+    interface or from the configuration file's SelectedAppx property.
+
+.EXAMPLE
+    Invoke-MakeItSo -appx @('Microsoft.BingWeather', 'Microsoft.ZuneMusic')
+    Starts the complete image customization process, removing the specified AppX packages.
+
+.EXAMPLE
+    Invoke-MakeItSo -appx $global:SelectedAppx
+    Executes the image build using the globally stored AppX removal list.
+
+.NOTES
+    Author: Eden Nelson
+    Version: 1.0
+    This function is the core of WIMWitch-tNG and coordinates all image modification operations.
+    It relies on numerous WPF form controls for settings (WPFMISWimNameTextBox, WPFMISMountTextBox, etc.)
+    and calls many helper functions for specific tasks.
+    Execution can take considerable time depending on selected options (updates, drivers, etc.).
+    All operations are logged via Update-Log for troubleshooting and audit purposes.
+    On error, the function returns early with appropriate logging; successful completion results in
+    a customized WIM file in the target location and optionally in ConfigMgr or as an ISO.
+
+.OUTPUTS
+    None. All output is via Update-Log function. Creates customized WIM file, optional ISO,
+    and optional ConfigMgr package. Returns early on validation failures or user cancellation.
+#>
 Function Invoke-MakeItSo ($appx) {
     #Check if new file name is valid, also append file extension if neccessary
 
@@ -6370,4 +9494,3 @@ Function Invoke-MakeItSo ($appx) {
     Update-Log -Data "Job's done." -Class Information
 }
 
-#endregion 

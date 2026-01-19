@@ -1,4 +1,136 @@
 ﻿Function Invoke-WimWitchTng {
+    <#
+    .SYNOPSIS
+        Launches the WIMWitch-tNG graphical interface for Windows image customization.
+
+    .DESCRIPTION
+        Invoke-WimWitchTng is the main entry point for the WIMWitch-tNG toolkit. It provides
+        a comprehensive GUI application for customizing Windows installation images (WIM files)
+        with support for:
+
+        - Importing and managing Windows installation media (WIM/ISO files)
+        - Injecting Windows Updates (cumulative updates, servicing stack updates)
+        - Adding or removing Windows drivers
+        - Removing built-in applications (AppX packages)
+        - Installing language packs, local experience packs, and features on demand
+        - Applying custom registry settings and start menu layouts
+        - Integration with Microsoft Endpoint Configuration Manager
+        - Autopilot profile deployment
+        - Creating bootable ISO media
+        - .NET Framework component management
+
+        The function can run in interactive GUI mode or automated mode using configuration files.
+        It supports both manual and scripted workflows for image customization tasks.
+
+    .PARAMETER auto
+        Enables automated/unattended mode using a configuration file. When specified, the GUI
+        will not display and all actions are performed based on the configuration file settings.
+
+    .PARAMETER autofile
+        Specifies the name of the configuration file to use in automated mode. This should be
+        a .JSON file containing the saved configuration. If not specified with -auto, the user
+        will be prompted to select a configuration file.
+
+    .PARAMETER autopath
+        Specifies the directory path where the configuration file is located. If not specified,
+        the default working directory is used.
+
+    .PARAMETER UpdatePoShModules
+        Updates required PowerShell modules (OSDSUS, OSDUpdate) before launching the application.
+        This ensures the latest versions of dependencies are installed.
+
+    .PARAMETER DownloadUpdates
+        Enables automatic downloading of Windows Updates during automated processing. When combined
+        with -auto, this allows fully unattended update downloads and injection.
+
+    .PARAMETER Win10Version
+        Specifies which Windows 10 version updates to download. Currently supports:
+        - '22H2': Windows 10 22H2 (latest supported version)
+        - 'none': Do not download Windows 10 updates (default)
+
+    .PARAMETER Win11Version
+        Specifies which Windows 11 version updates to download. Valid options:
+        - 'all': Download updates for all supported Windows 11 versions
+        - '23H2': Windows 11 23H2
+        - '24H2': Windows 11 24H2
+        - '25H2': Windows 11 25H2
+        - 'none': Do not download Windows 11 updates (default)
+
+    .PARAMETER CM
+        Specifies Configuration Manager (ConfigMgr/SCCM) integration mode:
+        - 'New': Create a new ConfigMgr image package
+        - 'Edit': Update an existing ConfigMgr image package
+        - 'none': No ConfigMgr integration (default)
+
+    .PARAMETER demomode
+        Enables demonstration mode which skips time-consuming operations for testing and
+        demonstration purposes. This is useful for validating workflows without waiting
+        for long-running processes like update downloads.
+
+    .PARAMETER workdir
+        Prompts for selection of the working directory where WIM files, drivers, updates,
+        and other resources are stored. This is a global variable used throughout the session.
+
+    .PARAMETER WorkingPath
+        Specifies the full path to the working directory instead of prompting for selection.
+        This directory will contain all working files including WIM images, drivers, updates,
+        language packs, and temporary files.
+
+    .PARAMETER AutoFixMount
+        Automatically attempts to repair mount point issues without user interaction. If WIM
+        files are found to be mounted from previous operations, this will clean them up
+        automatically instead of prompting the user.
+
+    .EXAMPLE
+        Invoke-WimWitchTng
+
+        Launches the WIMWitch-tNG GUI in interactive mode. The user will be prompted to select
+        a working directory and can then use the graphical interface to customize Windows images.
+
+    .EXAMPLE
+        Invoke-WimWitchTng -WorkingPath "C:\WimWitch" -Win11Version "24H2" -DownloadUpdates
+
+        Launches WIMWitch-tNG with the working directory set to C:\WimWitch and downloads
+        Windows 11 24H2 updates. The GUI will open for interactive customization.
+
+    .EXAMPLE
+        Invoke-WimWitchTng -auto -autofile "Win11-Standard.json" -autopath "C:\WimWitch\Configs"
+
+        Runs WIMWitch-tNG in automated mode using the configuration file Win11-Standard.json
+        located in C:\WimWitch\Configs. No GUI is displayed and all operations run automatically
+        based on the configuration.
+
+    .EXAMPLE
+        Invoke-WimWitchTng -UpdatePoShModules -WorkingPath "C:\WimWitch" -CM "New"
+
+        Updates required PowerShell modules, sets the working directory to C:\WimWitch, and
+        enables ConfigMgr integration in "New" mode to create a new image package.
+
+    .EXAMPLE
+        Invoke-WimWitchTng -auto -autofile "production.json" -DownloadUpdates -Win11Version "all" -AutoFixMount
+
+        Runs in automated mode with the production.json configuration, downloads updates for all
+        Windows 11 versions, and automatically fixes any mount point issues without prompting.
+
+    .NOTES
+        Author: Alex Laurie, Donna Ryan
+        Version: 4.0.1
+        Requires: PowerShell 5.1 or higher
+        Requires: Administrator privileges
+        Requires: OSDSUS and OSDUpdate modules for update management
+
+        The function creates a WPF-based graphical interface with multiple tabs for different
+        customization operations. When run in automated mode, the GUI is hidden and operations
+        are performed silently based on the configuration file.
+
+    .LINK
+        https://github.com/alaurie/WimWitchFK
+
+    .OUTPUTS
+        None. The function launches a GUI application or performs automated operations.
+        Status and progress information is displayed in the GUI or written to log files.
+    #>
+
     [CmdletBinding(SupportsShouldProcess=$false)]
     # Requires -Version 5.0
     # Requires -Modules OSDSUS, OSDUpdate

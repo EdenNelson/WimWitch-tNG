@@ -1,3 +1,71 @@
+<#
+.SYNOPSIS
+    Windows 10 22H2 removable AppX package list for WIMWitch-tNG.
+
+.DESCRIPTION
+    This PowerShell data file contains a comprehensive list of AppX (Modern/UWP) packages
+    that can be safely removed from Windows 10 22H2 installation images during customization.
+
+    The list includes consumer-oriented applications and features that are not essential for
+    enterprise or managed environments:
+    - Consumer entertainment apps (games, music, video)
+    - Microsoft Store promotional content
+    - Consumer-focused utilities and helper apps
+    - Bloatware and pre-installed promotional software
+
+    EXCLUDED from this list (intentionally NOT removable):
+    - Core Windows components and system dependencies
+    - Security and authentication components
+    - Windows Update and servicing components
+    - Essential runtime libraries (VCLibs, .NET Native, UI.Xaml)
+    - Microsoft Edge browser and WebView2
+
+.NOTES
+    File: appxWin10_22H2.psd1
+    Version: 1.0
+    Author: Eden Nelson
+    Target OS: Windows 10 22H2 (October 2022 Update)
+    Last Updated: See file modification date
+
+    Package Naming Convention:
+        PackageFamilyName_Version_Architecture_~_PublisherID
+        Example: Microsoft.WindowsCalculator_2020.2103.8.0_neutral_~_8wekyb3d8bbwe
+
+    Architectures:
+        - x64: 64-bit Intel/AMD processors
+        - x86: 32-bit Intel/AMD processors
+        - arm64: 64-bit ARM processors
+        - neutral: Platform-independent packages
+
+    Publisher IDs:
+        - 8wekyb3d8bbwe: Microsoft Corporation
+        - yxz26nhyzhsrt: Third-party publishers (e.g., Clipchamp)
+
+.MAINTENANCE
+    To update this list:
+    1. Deploy a clean Windows 10 22H2 image
+    2. Run: Get-AppxProvisionedPackage -Online | Select-Object DisplayName, PackageName
+    3. Identify new consumer packages safe for removal
+    4. Add full PackageName to the Packages array
+    5. Test removal on reference systems before production use
+    6. Update version number and Last Updated date
+
+    Testing Checklist:
+    - Verify Windows Update functionality
+    - Confirm Microsoft Store operation (if retained)
+    - Test core Windows features (Settings, Search, Notifications)
+    - Validate no system errors in Event Viewer
+
+.COMPATIBILITY
+    This list is specific to Windows 10 22H2. Do not use for:
+    - Windows 10 21H2 or earlier (package versions differ)
+    - Windows 11 (different package set - use appxWin11_*.psd1 files)
+    - Windows Server editions (minimal AppX packages)
+
+.LINK
+    https://github.com/alaurie/WimWitchFK
+#>
+
 @{
     Packages = @(
         'Clipchamp.Clipchamp_2.2.8.0_neutral_~_yxz26nhyzhsrt',
@@ -32,3 +100,4 @@
         'microsoft.windowscommunicationsapps_16005.14326.20544.0_neutral_~_8wekyb3d8bbwe'
     )
 }
+
