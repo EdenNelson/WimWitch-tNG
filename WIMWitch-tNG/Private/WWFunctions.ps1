@@ -127,6 +127,50 @@ Function Select-MountDir {
     Import-WimInfo -IndexNumber $IndexNumber
 }
 
+#Function to select the Source WIM file and image index
+Function Select-SourceWIM {
+    Add-Type -AssemblyName System.Windows.Forms
+
+    # Ensure Imports\WIM directory exists
+    $initialDir = "$global:workdir\Imports\WIM"
+    if (-not (Test-Path $initialDir)) {
+        New-Item -Path $initialDir -ItemType Directory -Force | Out-Null
+    }
+
+    $dialog = New-Object System.Windows.Forms.OpenFileDialog -Property @{
+        InitialDirectory = $initialDir
+        Filter           = 'WIM (*.wim)|*.wim|All Files (*.*)|*.*'
+    }
+    $null = $dialog.ShowDialog()
+
+    # Persist selection for other functions that reference $SourceWIM
+    $global:SourceWIM = $dialog
+
+    # Update UI textbox with chosen path
+    $WPFSourceWIMSelectWIMTextBox.Text = $dialog.FileName
+
+    if ($dialog.FileName -notlike '*.wim') {
+        Update-Log -Data 'A WIM file not selected. Please select a valid file to continue.' -Class Warning
+        return
+    }
+
+    # Let user choose image index from the selected WIM
+    try {
+        $images = @(Get-WindowsImage -ImagePath $dialog.FileName)
+    } catch {
+        Update-Log -Data "Failed to read WIM images: $($_.Exception.Message)" -Class Error
+        return
+    }
+
+    $selection = $images | Out-GridView -Title 'Choose an Image Index' -PassThru
+    if ($null -eq $selection) {
+        Update-Log -Data 'Index not selected. Reselect the WIM file to select an index' -Class Warning
+        return
+    }
+
+    Import-WimInfo -IndexNumber $selection.ImageIndex
+}
+
 Function Import-WimInfo($IndexNumber, [switch]$SkipUserConfirmation) {
     Update-Log -Data 'Importing Source WIM Info' -Class Information
     try {
@@ -1379,7 +1423,7 @@ Function Get-Configuration($filename) {
         Update-Log -data "Error details: $($_.Exception.Message)" -Class Error
     }
 
-    Invoke-CheckboxCleanup
+    # Invoke-CheckboxCleanup removed - Windows 10 version checkboxes no longer exist
     Update-Log -data 'Config file loaded successfully' -Class Information
 }
 
@@ -1749,17 +1793,43 @@ Function Repair-MountPoint {
 }
 
 Function Set-Version($wimversion) {
+    # Windows 11 versions
     if ($wimversion -like '10.0.22631.*') { $version = '23H2' }
     elseif ($wimversion -like '10.0.26100.*') { $version = '24H2' }
     elseif ($wimversion -like '10.0.26200.*') { $version = '25H2' }
-    elseif ($wimversion -like '10.0.16299.*') { $version = '1709' }
-    elseif ($wimversion -like '10.0.17134.*') { $version = '1803' }
-    elseif ($wimversion -like '10.0.17763.*') { $version = '1809' }
-    elseif ($wimversion -like '10.0.18362.*') { $version = '1909' }
-    elseif ($wimversion -like '10.0.14393.*') { $version = '1607' }
-    elseif ($wimversion -like '10.0.19041.*') { $version = '2004' }
+
+    # Windows 10 - Only 22H2 supported (all 1904*.* builds)
+    elseif ($wimversion -like '10.0.1904*.*') {
+        $version = '22H2'
+        Update-Log -Data "Auto-detected Windows 10 22H2 from build $wimversion. Note: Only Windows 10 22H2 is supported. ISO build numbers are inconsistent, assuming 22H2." -Class Information
+    }
+
+    # Unsupported Windows 10 builds
+    elseif ($wimversion -like '10.0.16299.*') {
+        Update-Log -Data "Unsupported Windows 10 build 1709 detected: $wimversion. Only Windows 10 22H2 is supported." -Class Error
+        $version = 'Unsupported'
+    }
+    elseif ($wimversion -like '10.0.17134.*') {
+        Update-Log -Data "Unsupported Windows 10 build 1803 detected: $wimversion. Only Windows 10 22H2 is supported." -Class Error
+        $version = 'Unsupported'
+    }
+    elseif ($wimversion -like '10.0.17763.*') {
+        Update-Log -Data "Unsupported Windows 10 build 1809 detected: $wimversion. Only Windows 10 22H2 is supported." -Class Error
+        $version = 'Unsupported'
+    }
+    elseif ($wimversion -like '10.0.18362.*') {
+        Update-Log -Data "Unsupported Windows 10 build 1909 detected: $wimversion. Only Windows 10 22H2 is supported." -Class Error
+        $version = 'Unsupported'
+    }
+    elseif ($wimversion -like '10.0.14393.*') {
+        Update-Log -Data "Unsupported Windows 10 build 1607 detected: $wimversion. Only Windows 10 22H2 is supported." -Class Error
+        $version = 'Unsupported'
+    }
     elseif ($wimversion -like '10.0.20348.*') { $version = '21H2' }
-    else { $version = 'Unknown' }
+    else {
+        Update-Log -Data "Unknown Windows version: $wimversion" -Class Warning
+        $version = 'Unknown'
+    }
     return $version
 }
 
@@ -1837,22 +1907,14 @@ Function Import-ISO {
 
 
         #####################
-        #Right here
-        $version = Set-Version -wimversion $windowsver.version
+        $version = Set-Version -wimversion $windowsver.Version
 
-        if ($version -eq 2004) {
-            $global:Win10VerDet = $null
-            Invoke-19041Select
-            if ($null -eq $global:Win10VerDet) {
-                Write-Host 'cancelling'
-                return
-            } else {
-                $version = $global:Win10VerDet
-                $global:Win10VerDet = $null
-            }
-
-            if ($version -eq '20H2') { $version = '2009' }
-            Write-Host $version
+        # Abort if unsupported Windows version detected
+        if ($version -eq 'Unsupported') {
+            Update-Log -Data "Cannot import unsupported Windows 10 build. Only Windows 10 22H2 is supported." -Class Error
+            Write-Output 'Import cancelled - unsupported Windows version'
+            Invoke-RemoveISOMount -inputObject $isomount
+            return
         }
 
     } catch {
@@ -2147,33 +2209,66 @@ Function Backup-WIMWitch {
 Function Get-OneDrive {
     #https://go.microsoft.com/fwlink/p/?LinkID=844652 -Possible new link location.
     #https://go.microsoft.com/fwlink/?linkid=2181064 - x64 installer
+    #https://go.microsoft.com/fwlink/?linkid=2282608 - ARM64 installer
 
+    # Detect Windows version and architecture being serviced
+    $os = Get-WindowsType
+    $arch = $WPFSourceWimArchTextBox.text
 
-    Update-Log -Data 'Downloading latest 32-bit OneDrive agent installer...' -class Information
-    $DownloadUrl = 'https://go.microsoft.com/fwlink/p/?LinkId=248256'
-    $DownloadPath = "$global:workdir\updates\OneDrive"
-    $DownloadFile = 'OneDriveSetup.exe'
+    # Windows 10 x64: Download x86 + x64
+    # Windows 11 x64: Download x64 only
+    # Windows 11 ARM64: Download ARM64 only
 
-    if (!(Test-Path "$DownloadPath")) { New-Item -Path $DownloadPath -ItemType Directory -Force | Out-Null }
-    Invoke-WebRequest -Uri $DownloadUrl -OutFile "$DownloadPath\$DownloadFile"
-    if (Test-Path "$DownloadPath\$DownloadFile") {
-        Update-Log -Data 'OneDrive Download Complete' -Class Information
+    if ($os -eq 'Windows 10') {
+        Update-Log -Data 'Downloading latest 32-bit OneDrive agent installer for Windows 10...' -class Information
+        $DownloadUrl = 'https://go.microsoft.com/fwlink/p/?LinkId=248256'
+        $DownloadPath = "$global:workdir\updates\OneDrive\x86"
+        $DownloadFile = 'OneDriveSetup.exe'
+
+        if (!(Test-Path "$DownloadPath")) { New-Item -Path $DownloadPath -ItemType Directory -Force | Out-Null }
+        Invoke-WebRequest -Uri $DownloadUrl -OutFile "$DownloadPath\$DownloadFile"
+        if (Test-Path "$DownloadPath\$DownloadFile") {
+            Update-Log -Data 'OneDrive x86 Download Complete' -Class Information
+        } else {
+            Update-log -Data 'OneDrive x86 could not be downloaded' -Class Error
+        }
     } else {
-        Update-log -Data 'OneDrive could not be downloaded' -Class Error
+        Update-Log -Data 'Skipping x86 OneDrive download for Windows 11' -Class Information
     }
 
+    # Only download x64 for Windows 10 or Windows 11 x64 (skip for ARM64)
+    if (($os -eq 'Windows 10') -or (($os -eq 'Windows 11') -and ($arch -eq 'x64'))) {
+        Update-Log -Data 'Downloading latest 64-bit OneDrive agent installer...' -class Information
+        $DownloadUrl = 'https://go.microsoft.com/fwlink/?linkid=2181064'
+        $DownloadPath = "$global:workdir\updates\OneDrive\x64"
+        $DownloadFile = 'OneDriveSetup.exe'
 
-    Update-Log -Data 'Downloading latest 64-bit OneDrive agent installer...' -class Information
-    $DownloadUrl = 'https://go.microsoft.com/fwlink/?linkid=2181064'
-    $DownloadPath = "$global:workdir\updates\OneDrive\x64"
-    $DownloadFile = 'OneDriveSetup.exe'
-
-    if (!(Test-Path "$DownloadPath")) { New-Item -Path $DownloadPath -ItemType Directory -Force | Out-Null }
-    Invoke-WebRequest -Uri $DownloadUrl -OutFile "$DownloadPath\$DownloadFile"
-    if (Test-Path "$DownloadPath\$DownloadFile") {
-        Update-Log -Data 'OneDrive Download Complete' -Class Information
+        if (!(Test-Path "$DownloadPath")) { New-Item -Path $DownloadPath -ItemType Directory -Force | Out-Null }
+        Invoke-WebRequest -Uri $DownloadUrl -OutFile "$DownloadPath\$DownloadFile"
+        if (Test-Path "$DownloadPath\$DownloadFile") {
+            Update-Log -Data 'OneDrive x64 Download Complete' -Class Information
+        } else {
+            Update-log -Data 'OneDrive x64 could not be downloaded' -Class Error
+        }
     } else {
-        Update-log -Data 'OneDrive could not be downloaded' -Class Error
+        Update-Log -Data 'Skipping x64 OneDrive download for Windows 11 ARM64' -Class Information
+    }
+
+    if (($os -eq 'Windows 11') -and ($arch -eq 'ARM64')) {
+        Update-Log -Data 'Downloading latest ARM64 OneDrive agent installer for Windows 11...' -class Information
+        $DownloadUrl = 'https://go.microsoft.com/fwlink/?linkid=2282608'
+        $DownloadPath = "$global:workdir\updates\OneDrive\arm64"
+        $DownloadFile = 'OneDriveSetup.exe'
+
+        if (!(Test-Path "$DownloadPath")) { New-Item -Path $DownloadPath -ItemType Directory -Force | Out-Null }
+        Invoke-WebRequest -Uri $DownloadUrl -OutFile "$DownloadPath\$DownloadFile"
+        if (Test-Path "$DownloadPath\$DownloadFile") {
+            Update-Log -Data 'OneDrive ARM64 Download Complete' -Class Information
+        } else {
+            Update-log -Data 'OneDrive ARM64 could not be downloaded' -Class Error
+        }
+    } else {
+        Update-Log -Data 'Skipping ARM64 OneDrive download (not Windows 11 ARM64)' -Class Information
     }
 
 }
@@ -2181,9 +2276,22 @@ Function Get-OneDrive {
 #Function to copy new OneDrive client installer to mount path
 Function Copy-OneDrive {
     Update-Log -data 'Updating OneDrive x86 client' -class information
+    $mountpath = $WPFMISMountTextBox.text
+
+    # Check if SysWOW64 exists (only present on x64 systems, not on Windows 11 or ARM64)
+    if (-not (Test-Path "$mountpath\Windows\SysWOW64\OneDriveSetup.exe")) {
+        Update-Log -Data 'Skipping x86 OneDrive—SysWOW64 not present (likely Windows 11 or ARM64 system)' -Class Information
+        return
+    }
+
+    # Check if x86 installer was downloaded
+    if (-not (Test-Path "$global:workdir\updates\OneDrive\x86\OneDriveSetup.exe")) {
+        Update-Log -Data 'x86 OneDrive installer not found in updates folder. Skipping x86 update.' -Class Warning
+        return
+    }
+
     try {
         Update-Log -Data 'Setting ACL on the original OneDriveSetup.exe file' -Class Information
-        $mountpath = $WPFMISMountTextBox.text
 
         $AclBAK = Get-Acl "$mountpath\Windows\SysWOW64\OneDriveSetup.exe"
         $user = $env:USERDOMAIN + '\' + $env:USERNAME
@@ -2207,11 +2315,9 @@ Function Copy-OneDrive {
     }
 
     try {
-
-
         Update-Log -data 'Copying updated OneDrive agent installer...' -Class Information
-        Copy-Item "$global:workdir\updates\OneDrive\OneDriveSetup.exe" -Destination "$mountpath\Windows\SysWOW64" -Force -ErrorAction Stop
-        Update-Log -Data 'OneDrive installer successfully copied.' -Class Information
+        Copy-Item "$global:workdir\updates\OneDrive\x86\OneDriveSetup.exe" -Destination "$mountpath\Windows\SysWOW64" -Force -ErrorAction Stop
+        Update-Log -Data 'OneDrive x86 installer successfully copied.' -Class Information
     } catch {
         Update-Log -data "Couldn't copy the OneDrive installer file." -class Error
         Update-Log -data $_.Exception.Message -Class Error
@@ -2227,12 +2333,40 @@ Function Copy-OneDrive {
     }
 }
 
-#Function to copy new OneDrive client installer to mount path
+#Function to copy new OneDrive client installer to mount path (x64 or ARM64)
 Function Copy-OneDrivex64 {
-    Update-Log -data 'Updating OneDrive x64 client' -class information
+    Update-Log -data 'Updating OneDrive x64/ARM64 client' -class information
+    $mountpath = $WPFMISMountTextBox.text
+
+    # Detect WIM architecture
+    $wimArch = $WPFSourceWimArchTextBox.text
+
+    # Determine which installer to use
+    $installerPath = ""
+    $archType = ""
+
+    if ($wimArch -eq 'ARM64') {
+        $installerPath = "$global:workdir\updates\OneDrive\arm64\OneDriveSetup.exe"
+        $archType = 'ARM64'
+    } else {
+        $installerPath = "$global:workdir\updates\OneDrive\x64\OneDriveSetup.exe"
+        $archType = 'x64'
+    }
+
+    # Check if installer exists
+    if (-not (Test-Path $installerPath)) {
+        Update-Log -Data "$archType OneDrive installer not found at $installerPath. Skipping update." -Class Warning
+        return
+    }
+
+    # Check if target file exists in mount
+    if (-not (Test-Path "$mountpath\Windows\System32\OneDriveSetup.exe")) {
+        Update-Log -Data 'OneDriveSetup.exe not found in System32. Skipping update.' -Class Warning
+        return
+    }
+
     try {
-        Update-Log -Data 'Setting ACL on the original OneDriveSetup.exe file' -Class Information
-        $mountpath = $WPFMISMountTextBox.text
+        Update-Log -Data "Setting ACL on the original OneDriveSetup.exe file ($archType)" -Class Information
 
         $AclBAK = Get-Acl "$mountpath\Windows\System32\OneDriveSetup.exe"
         $user = $env:USERDOMAIN + '\' + $env:USERNAME
@@ -2256,10 +2390,9 @@ Function Copy-OneDrivex64 {
     }
 
     try {
-
-        Update-Log -data 'Copying updated OneDrive agent installer...' -Class Information
-        Copy-Item "$global:workdir\updates\OneDrive\x64\OneDriveSetup.exe" -Destination "$mountpath\Windows\System32" -Force -ErrorAction Stop
-        Update-Log -Data 'OneDrive installer successfully copied.' -Class Information
+        Update-Log -data "Copying updated OneDrive $archType agent installer..." -Class Information
+        Copy-Item $installerPath -Destination "$mountpath\Windows\System32" -Force -ErrorAction Stop
+        Update-Log -Data "OneDrive $archType installer successfully copied." -Class Information
     } catch {
         Update-Log -data "Couldn't copy the OneDrive installer file." -class Error
         Update-Log -data $_.Exception.Message -Class Error
@@ -4673,6 +4806,29 @@ Function Invoke-MSUpdateItemDownload {
                     $UpdateItemContentArray = @($UpdateItemContent)
 
                     foreach ($ContentItem in $UpdateItemContentArray) {
+                        # Filter: Only download .cab and .msu files
+                        $fileExtension = [System.IO.Path]::GetExtension($ContentItem.filename).ToLower()
+                        if ($fileExtension -ne '.cab' -and $fileExtension -ne '.msu') {
+                            Update-Log -Data "Skipping non-CAB/MSU file: $($ContentItem.filename)" -Class Information
+                            continue
+                        }
+
+                        # Filter: Skip incompatible CAB patterns (offline servicing not supported)
+                        if ($ContentItem.filename -like '*FodMetadataServicing*') {
+                            Update-Log -Data "Skipping FodMetadataServicing package (not compatible with offline servicing): $($ContentItem.filename)" -Class Information
+                            continue
+                        }
+                        
+                        if ($ContentItem.filename -like '*-express.cab') {
+                            Update-Log -Data "Skipping express CAB (requires online servicing): $($ContentItem.filename)" -Class Information
+                            continue
+                        }
+                        
+                        if ($ContentItem.filename -like '*-baseless.cab') {
+                            Update-Log -Data "Skipping baseless CAB (requires baseline already installed): $($ContentItem.filename)" -Class Information
+                            continue
+                        }
+
                         # Create new custom object for the update content
                         #write-host $ContentItem.filename
                         $PSObject = [PSCustomObject]@{
@@ -4707,7 +4863,72 @@ Function Invoke-MSUpdateItemDownload {
                             $WebClient.DownloadFile($PSObject.SourceURL, $DNLDPath)
 
                             Update-Log -Data "Download completed successfully, file: $($PSObject.FileName)" -Class Information
-                            $ReturnValue = 0
+
+                            # Validate .cab files contain update.mum metadata
+                            if ($PSObject.FileName -like '*.cab') {
+                                Update-Log -Data "Validating CAB file contains update.mum metadata..." -Class Information
+                                $validationPassed = $false
+                                $validationAttempted = $false
+
+                                try {
+                                    # Method 1: Try PowerShell/COM approach using Shell.Application
+                                    $shell = New-Object -ComObject Shell.Application
+                                    $cabFolder = $shell.NameSpace($DNLDPath)
+
+                                    if ($null -ne $cabFolder) {
+                                        $updateMumFound = $false
+                                        foreach ($item in $cabFolder.Items()) {
+                                            if ($item.Name -match 'update\.mum') {
+                                                $updateMumFound = $true
+                                                break
+                                            }
+                                        }
+                                        $validationAttempted = $true
+
+                                        if (-not $updateMumFound) {
+                                            Update-Log -Data "CAB file is invalid - does not contain update.mum metadata. Deleting: $($PSObject.FileName)" -Class Error
+                                            Remove-Item -Path $DNLDPath -Force -ErrorAction Stop
+                                            $ReturnValue = 1
+                                        } else {
+                                            Update-Log -Data "CAB file validation passed - update.mum metadata found (via COM)" -Class Information
+                                            $validationPassed = $true
+                                            $ReturnValue = 0
+                                        }
+                                    }
+                                } catch {
+                                    Update-Log -Data "COM validation method failed: $($_.Exception.Message)" -Class Warning
+                                    $validationAttempted = $false
+                                }
+
+                                # Method 2: Fallback to expand.exe if COM method failed
+                                if (-not $validationAttempted) {
+                                    try {
+                                        Update-Log -Data "Attempting validation with expand.exe..." -Class Information
+                                        $expandExe = "$env:windir\system32\expand.exe"
+                                        # List contents of CAB without extracting
+                                        $cabContents = & $expandExe -D $DNLDPath 2>&1 | Out-String
+
+                                        if ($cabContents -notmatch 'update\.mum') {
+                                            Update-Log -Data "CAB file is invalid - does not contain update.mum metadata. Deleting: $($PSObject.FileName)" -Class Error
+                                            Remove-Item -Path $DNLDPath -Force -ErrorAction Stop
+                                            $ReturnValue = 1
+                                        } else {
+                                            Update-Log -Data "CAB file validation passed - update.mum metadata found (via expand.exe)" -Class Information
+                                            $validationPassed = $true
+                                            $ReturnValue = 0
+                                        }
+                                    } catch {
+                                        Update-Log -Data "Failed to validate CAB file with expand.exe: $($_.Exception.Message)" -Class Warning
+                                        $ReturnValue = 0  # Continue even if validation fails
+                                    }
+                                }
+
+                                if (-not $validationPassed -and $ReturnValue -eq 0) {
+                                    Update-Log -Data "CAB validation could not be completed - keeping file as fallback" -Class Warning
+                                }
+                            } else {
+                                $ReturnValue = 0
+                            }
                         } catch [System.Exception] {
                             Update-Log -data "Unable to download update item content. Error message: $($_.Exception.Message)" -Class Error
                             $ReturnValue = 1
@@ -5510,65 +5731,38 @@ Function Update-WinReWim {
 #Function to retrieve windows version
 Function Get-WinVersionNumber {
     $buildnum = $null
+    $wimBuild = $WPFSourceWimVerTextBox.text
 
-    # Latest 10 Windows 10 version checks
-    switch -Regex ($WPFSourceWimVerTextBox.text) {
-
-        #Windows 10 version checks
-        '10\.0\.19045\.\d+' { $buildnum = '22H2' }
+    # Windows 10 and 11 version detection
+    switch -Regex ($wimBuild) {
+        # Windows 10 - Only 22H2 supported (all 1904*.* builds)
+        '10\.0\.1904\d\.\d+' {
+            $buildnum = '22H2'
+            Update-Log -Data "Auto-detected Windows 10 22H2 from build $wimBuild. Note: Only Windows 10 22H2 is supported. ISO build numbers from Microsoft are inconsistent across 2004/20H2/21H1/21H2/22H2 releases, so all 10.0.1904*.* builds will be treated as 22H2." -Class Information
+        }
 
         # Windows 11 version checks
         '10\.0\.22631\.\d+' { $buildnum = '23H2' }
         '10\.0\.26100\.\d+' { $buildnum = '24H2' }
         '10\.0\.26200\.\d+' { $buildnum = '25H2' }
 
-
-        Default { $buildnum = 'Unknown Version' }
-    }
-
-
-
-    If ($WPFSourceWimVerTextBox.text -like '10.0.19041.*') {
-        $IsMountPoint = $False
-        $currentmounts = Get-WindowsImage -Mounted
-        foreach ($currentmount in $currentmounts) {
-            if ($currentmount.path -eq $WPFMISMountTextBox.text) { $IsMountPoint = $true }
+        # Unsupported Windows 10 builds
+        '10\.0\.10\d{3}\.\d+' {
+            Update-Log -Data "Unsupported Windows 10 build detected: $wimBuild. Only Windows 10 22H2 (build 19045) is supported. Please use an older version of WIMWitch for legacy Windows 10 builds." -Class Error
+            $buildnum = 'Unsupported'
+        }
+        '10\.0\.14393\.\d+' {
+            Update-Log -Data "Unsupported Windows 10 build 1607 detected: $wimBuild. Only Windows 10 22H2 is supported." -Class Error
+            $buildnum = 'Unsupported'
+        }
+        '10\.0\.1[5-8]\d{3}\.\d+' {
+            Update-Log -Data "Unsupported Windows 10 build detected: $wimBuild. Only Windows 10 22H2 (build 19045) is supported." -Class Error
+            $buildnum = 'Unsupported'
         }
 
-        #IS a mount path
-        If ($IsMountPoint -eq $true) {
-            $mountdir = $WPFMISMountTextBox.Text
-            reg LOAD HKLM\OFFLINE $mountdir\Windows\System32\Config\SOFTWARE | Out-Null
-            $regvalues = (Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\OFFLINE\Microsoft\Windows NT\CurrentVersion\' )
-            $buildnum = $regvalues.ReleaseId
-            if ($regvalues.ReleaseId -eq '2009') {
-                if ($regvalues.CurrentBuild -eq '19042') { $buildnum = '2009' }
-                if ($regvalues.CurrentBuild -eq '19043') { $buildnum = '21H1' }
-                if ($regvalues.CurrentBuild -eq '19044') { $buildnum = '21H2' }
-                if ($regvalues.CurrentBuild -eq '19045') { $buildnum = '22H2' }
-            }
-
-            reg UNLOAD HKLM\OFFLINE | Out-Null
-
-
-        }
-
-        If ($IsMountPoint -eq $False) {
-            $global:Win10VerDet = $null
-
-            Update-Log -data 'Prompting user for Win10 version confirmation...' -class Information
-
-            Invoke-19041Select
-
-            if ($null -eq $global:Win10VerDet) { return }
-
-            $temp = $global:Win10VerDet
-
-            $buildnum = $temp
-            Update-Log -data "User selected $buildnum" -class Information
-
-            $global:Win10VerDet = $null
-
+        Default {
+            Update-Log -Data "Unknown Windows version: $wimBuild" -Class Warning
+            $buildnum = 'Unknown Version'
         }
     }
 
@@ -5612,72 +5806,6 @@ Function Test-IsoBinariesExist {
         Update-Log -data 'Import ISO Binaries from an ISO or disable ISO/Upgrade Package creation' -Class Warning
         return $false
     }
-}
-
-#Function to clear partial checkboxes when importing config file
-Function Invoke-CheckboxCleanup {
-    Update-Log -Data 'Cleaning null checkboxes...' -Class Information
-    $Variables = Get-Variable WPF*
-    foreach ($variable in $variables) {
-
-        if ($variable.value -like '*.CheckBox*') {
-            #write-host $variable.name
-            #write-host $variable.value.IsChecked
-            if ($variable.value.IsChecked -ne $true) { $variable.value.IsChecked = $false }
-        }
-    }
-}
-
-#Function to really make sure the ISO mount is gone!
-Function Invoke-RemoveISOMount ($inputObject) {
-    DO {
-        Dismount-DiskImage -InputObject $inputObject
-    }
-    while (Dismount-DiskImage -InputObject $inputObject)
-    #He's dead Jim!
-    Update-Log -data 'Dismount complete' -class Information
-}
-
-#Function to install CM Console extensions
-Function Install-WWCMConsoleExtension {
-    $UpdateWWXML = @"
-<ActionDescription Class ="Executable" DisplayName="Update with WIM Witch" MnemonicDisplayName="Update with WIM Witch" Description="Click to update the image with WIM Witch">
-	<ShowOn>
-		<string>ContextMenu</string>
-		<string>DefaultHomeTab</string>
-	</ShowOn>
-	<Executable>
-		<FilePath>$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe</FilePath>
-		<Parameters> -ExecutionPolicy Bypass -File "$PSCommandPath" -auto -autofile "$global:workdir\ConfigMgr\PackageInfo\##SUB:PackageID##"</Parameters>
-	</Executable>
-</ActionDescription>
-"@
-
-    $EditWWXML = @"
-<ActionDescription Class ="Executable" DisplayName="Edit WIM Witch Image Config" MnemonicDisplayName="Edit WIM Witch Image Config" Description="Click to edit the WIM Witch image configuration">
-	<ShowOn>
-		<string>ContextMenu</string>
-		<string>DefaultHomeTab</string>
-	</ShowOn>
-	<Executable>
-		<FilePath>$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe</FilePath>
-		<Parameters> -ExecutionPolicy Bypass -File "$PSCommandPath" -CM "Edit" -autofile "$global:workdir\ConfigMgr\PackageInfo\##SUB:PackageID##"</Parameters>
-	</Executable>
-</ActionDescription>
-"@
-
-    $NewWWXML = @"
-<ActionDescription Class ="Executable" DisplayName="New WIM Witch Image" MnemonicDisplayName="New WIM Witch Image" Description="Click to create a new WIM Witch image">
-	<ShowOn>
-		<string>ContextMenu</string>
-		<string>DefaultHomeTab</string>
-	</ShowOn>
-	<Executable>
-		<FilePath>$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe</FilePath>
-		<Parameters> -ExecutionPolicy Bypass -File "$PSCommandPath" -CM "New"</Parameters>
-	</Executable>
-</ActionDescription>
-"@
 
     Update-Log -Data 'Installing ConfigMgr console extension...' -Class Information
 
@@ -5827,80 +5955,8 @@ Function Invoke-TextNotification {
     Update-Log -data '*********************************' -class Comment
 }
 
-#Function to display Windows 10 v2XXX selection pop up
-Function Invoke-19041Select {
-    $inputXML = @'
-<Window x:Class="popup.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:popup"
-        mc:Ignorable="d"
-        Title="Select Win10 Version" Height="170" Width="353">
-    <Grid x:Name="Win10PU" Margin="0,0,10,6">
-        <ComboBox x:Name="Win10PUCombo" HorizontalAlignment="Left" Margin="40,76,0,0" VerticalAlignment="Top" Width="120"/>
-        <Button x:Name="Win10PUOK" Content="OK" HorizontalAlignment="Left" Margin="182,76,0,0" VerticalAlignment="Top" Width="50"/>
-        <Button x:Name="Win10PUCancel" Content="Cancel" HorizontalAlignment="Left" Margin="248,76,0,0" VerticalAlignment="Top" Width="50"/>
-        <TextBlock x:Name="Win10PUText" HorizontalAlignment="Left" Margin="24,27,0,0" Text="Please selet the correct version of Windows 10." TextWrapping="Wrap" VerticalAlignment="Top" Grid.ColumnSpan="2"/>
-
-    </Grid>
-</Window>
-
-'@
-
-    $inputXML = $inputXML -replace 'mc:Ignorable="d"', '' -replace 'x:N', 'N' -replace '^<Win.*', '<Window'
-    [void][System.Reflection.Assembly]::LoadWithPartialName('presentationframework')
-    [xml]$XAML = $inputXML
-    #Read XAML
-
-    $reader = (New-Object System.Xml.XmlNodeReader $xaml)
-    try {
-        $Form = [Windows.Markup.XamlReader]::Load( $reader )
-    } catch {
-        Write-Warning "Unable to parse XML, with error: $($Error[0])`n Ensure that there are NO SelectionChanged or TextChanged properties in your textboxes (PowerShell cannot process them)"
-        throw
-    }
-
-    $xaml.SelectNodes('//*[@Name]') | ForEach-Object { "trying item $($_.Name)" | Out-Null
-        try { Set-Variable -Name "WPF$($_.Name)" -Value $Form.FindName($_.Name) -ErrorAction Stop }
-        catch { throw }
-    }
-
-    Function Get-FormVariables {
-        if ($global:ReadmeDisplay -ne $true) {
-            #Write-host "If you need to reference this display again, run Get-FormVariables" -ForegroundColor Yellow;$global:ReadmeDisplay=$true
-        }
-        #write-host "Found the following interactable elements from our form" -ForegroundColor Cyan
-        Get-Variable WPF*
-    }
-
-    Get-FormVariables | Out-Null
-
-    #Combo Box population
-    $Win10VerNums = @('20H2', '21H1', '21H2', '22H2')
-    Foreach ($Win10VerNum in $Win10VerNums) { $WPFWin10PUCombo.Items.Add($Win10VerNum) | Out-Null }
-
-
-    #Button_OK_Click
-    $WPFWin10PUOK.Add_Click({
-            $global:Win10VerDet = $WPFWin10PUCombo.SelectedItem
-            $Form.Close()
-            return
-        })
-
-    #Button_Cancel_Click
-    $WPFWin10PUCancel.Add_Click({
-            $global:Win10VerDet = $null
-            Update-Log -data 'User cancelled the confirmation dialog box' -Class Warning
-            $Form.Close()
-            return
-        })
-
-
-    $Form.ShowDialog() | Out-Null
-
-}
+# Invoke-19041Select function removed - Windows 10 22H2 is auto-detected from build 1904*.*
+# Legacy Windows 10 versions are no longer supported
 
 #Function for the Make it So button
 Function Invoke-MakeItSo ($appx) {
