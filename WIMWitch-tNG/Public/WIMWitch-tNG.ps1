@@ -114,10 +114,15 @@
 
     .NOTES
         Author: Alex Laurie, Donna Ryan
-        Version: 4.0.1
+        Maintained By: Eden Nelson
+        Version: 5.0-beta
         Requires: PowerShell 5.1 or higher
         Requires: Administrator privileges
         Requires: OSDSUS and OSDUpdate modules for update management
+
+        Versioning Strategy: Transitioning to date-based format (YYYY.M.D)
+        - 5.0-beta: Pre-release with comprehensive documentation
+        - 2026.1.x: First stable release with date-based versioning
 
         The function creates a WPF-based graphical interface with multiple tabs for different
         customization operations. When run in automated mode, the GUI is hidden and operations
@@ -182,7 +187,8 @@
 
     )
 
-    $WWScriptVer = '4.0.1'
+    # Version information (transitioning to date-based versioning: next stable = 2026.1.x)
+    $WWScriptVer = '5.0-beta'
     $global:VerboseLogging = $Verbose
 
     #region XAML

@@ -1,12 +1,17 @@
 <#
 .SYNOPSIS
     WIMWitch-tNG PowerShell Module - Root module file for Windows image customization toolkit.
+    "Engage." - Captain Jean-Luc Picard
 
 .DESCRIPTION
     This module provides comprehensive Windows image (WIM) customization capabilities through
     a graphical interface and automation features. WIMWitch-tNG is a community fork of the
     original WIMWitch tool, designed to help IT professionals create customized Windows
     installation images.
+    
+    The "tNG" (the Next Generation) theme honors Donna Ryan's (TheNotoriousDRR) original
+    Star Trek: The Next Generation inspiration, reflecting the project's evolution while
+    maintaining its core mission.
 
     The module architecture follows PowerShell best practices:
     - Public functions are exported and available to users
@@ -24,9 +29,13 @@
 
 .NOTES
     Author: Alex Laurie, Donna Ryan
+    Maintained By: Eden Nelson
     Module Name: WIMWitch-tNG
-    Version: 4.0.1
+    Version: 5.0-beta
     License: See LICENSE file in repository
+
+    Versioning: Transitioning to date-based format (YYYY.M.D)
+    Next stable release will use 2026.1.x format
 
 .LINK
     https://github.com/alaurie/WimWitchFK
