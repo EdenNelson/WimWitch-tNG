@@ -542,17 +542,17 @@ If significant issues arise during Stage 1–2:
 | Batch | Function Range | Status         | Extracted | Validated | Completed  |
 | ----- | -------------- | -------------- | --------- | --------- | ---------- |
 | 1     | 1-10           | ✅ COMPLETE    | 10/10     | 10/10     | 2026-01-29 |
-| 2     | 11-20          | ⏳ NOT STARTED | 0/10      | 0/10      | —          |
-| 3     | 21-30          | ⏳ NOT STARTED | 0/10      | 0/10      | —          |
-| 4     | 31-40          | ⏳ NOT STARTED | 0/10      | 0/10      | —          |
-| 5     | 41-50          | ⏳ NOT STARTED | 0/10      | 0/10      | —          |
-| 6     | 51-60          | ⏳ NOT STARTED | 0/10      | 0/10      | —          |
-| 7     | 61-70          | ⏳ NOT STARTED | 0/10      | 0/10      | —          |
-| 8     | 71-80          | ⏳ NOT STARTED | 0/10      | 0/10      | —          |
-| 9     | 81-90          | ⏳ NOT STARTED | 0/10      | 0/10      | —          |
-| 10    | 91-100         | ⏳ NOT STARTED | 0/10      | 0/10      | —          |
-| 11    | 101-105        | ⏳ NOT STARTED | 0/5       | 0/5       | —          |
-|       | **TOTALS**     |                | **10/105**| **10/105**|            |
+| 2     | 11-20          | ✅ COMPLETE    | 10/10     | 10/10     | 2026-01-29 |
+| 3     | 21-30          | ✅ COMPLETE    | 10/10     | 10/10     | 2026-01-29 |
+| 4     | 31-40          | ✅ COMPLETE    | 10/10     | 10/10     | 2026-01-29 |
+| 5     | 41-50          | ✅ COMPLETE    | 10/10     | 10/10     | 2026-01-29 |
+| 6     | 51-60          | ✅ COMPLETE    | 10/10     | 10/10     | 2026-01-29 |
+| 7     | 61-70          | ✅ COMPLETE    | 10/10     | 10/10     | 2026-01-29 |
+| 8     | 71-80          | ✅ COMPLETE    | 10/10     | 10/10     | 2026-01-29 |
+| 9     | 81-90          | ✅ COMPLETE    | 10/10     | 10/10     | 2026-01-29 |
+| 10    | 91-100         | ✅ COMPLETE    | 10/10     | 10/10     | 2026-01-29 |
+| 11    | 101-105        | ✅ COMPLETE    | 5/5       | 5/5       | 2026-01-29 |
+|       | **TOTALS**     |                | **105/105** | **105/105** |            |
 
 **Batch 1 Details (Functions 1-10):**
 
@@ -566,6 +566,131 @@ If significant issues arise during Stage 1–2:
 8. ✅ Invoke-ParseJSON (lines 486-502)
 9. ✅ Select-DriverSource (lines 555-563)
 10. ✅ Select-TargetDir (lines 587-595)
+
+**Batch 2 Details (Functions 11-20):**
+
+1. ✅ Update-Log (lines 645-702)
+2. ✅ Set-Logging (lines 733-794)
+3. ✅ Install-Driver (lines 828-836)
+4. ✅ Start-DriverInjection (lines 870-882)
+5. ✅ Get-OSDBInstallation (lines 909-928)
+6. ✅ Get-OSDSUSInstallation (lines 954-974)
+7. ✅ Get-OSDBCurrentVer (lines 1000-1012)
+8. ✅ Get-OSDSUSCurrentVer (lines 1038-1050)
+9. ✅ Update-OSDB (lines 1078-1120)
+10. ✅ Update-OSDSUS (lines 1148-1188)
+
+**Batch 3 Details (Functions 21-30):**
+
+1. ✅ Compare-OSDBuilderVer (lines 1215-1228)
+2. ✅ Compare-OSDSUSVer (lines 1255-1268)
+3. ✅ Test-Superceded (lines 1307-1345)
+4. ✅ Get-WindowsPatches (lines 1377-1441)
+5. ✅ Update-PatchSource (lines 1469-1550)
+6. ✅ Deploy-LCU (lines 1579-1683)
+7. ✅ Deploy-Updates (lines 1718-1804)
+8. ✅ Select-Appx (lines 1830-1867)
+9. ✅ Remove-Appx (lines 1907-1920)
+10. ✅ Remove-OSIndex (lines 1954-1971)
+
+**Batch 4 Details (Functions 31-40):**
+
+1. ✅ Select-NewJSONDir (lines 2022-2032)
+2. ✅ Update-Autopilot (lines 2060-2070)
+3. ✅ Get-WWAutopilotProfile (lines 2110-2175)
+4. ✅ Save-Configuration (lines 2215-2357)
+5. ✅ Get-Configuration (lines 2394-2530)
+6. ✅ Select-Config (lines 2555-2563)
+7. ✅ Reset-MISCheckBox (lines 2592-2621)
+8. ✅ Invoke-RunConfigFile (lines 2660-2668)
+9. ✅ Show-ClosingText (lines 2696-2704)
+10. ✅ Show-OpeningText (lines 2732-2741)
+
+**Batch 5 Details (Functions 41-50):**
+
+1. ✅ Test-MountPath (lines 2780-2843)
+2. ✅ Test-Name (lines 2883-2924)
+3. ✅ Rename-Name (lines 2962-2977)
+4. ✅ Test-WorkingDirectory (lines 3005-3051)
+5. ✅ Select-WorkingDirectory (lines 3076-3087)
+6. ✅ Repair-MountPoint (lines 3128-3226)
+7. ✅ Set-Version (lines 3268-3307)
+8. ✅ Import-ISO (lines 3348-3580)
+9. ✅ Select-ISO (lines 3614-3631)
+10. ✅ Add-DotNet (lines 3662-3683)
+
+**Batch 6 Details (Functions 51-60):**
+
+1. ✅ Test-DotNetExists (lines 3714-3734)
+2. ✅ Install-WimWitchUpgrade (lines 3771-3802)
+3. ✅ Backup-WIMWitch (lines 3838-3865)
+4. ✅ Get-OneDrive (lines 3897-3962)
+5. ✅ Copy-OneDrive (lines 3994-4051)
+6. ✅ Copy-OneDrivex64 (lines 4084-4156)
+7. ✅ Select-LPFODCriteria (lines 4222-4257)
+8. ✅ Select-LanguagePacks (lines 4315-4321)
+9. ✅ Select-LocalExperiencePack (lines 4379-4386)
+10. ✅ Select-FeaturesOnDemand (lines 4447-6138)
+
+**Batch 7 Details (Functions 61-70):**
+
+1. ✅ Install-LanguagePacks (lines 6167-6203)
+2. ✅ Install-LocalExperiencePack (lines 6231-6259)
+3. ✅ Install-FeaturesOnDemand (lines 6287-6316)
+4. ✅ Import-LanguagePacks (lines 6353-6379)
+5. ✅ Import-LocalExperiencePack (lines 6418-6453)
+6. ✅ Import-FeatureOnDemand (lines 6499-6550)
+7. ✅ Update-ImportVersionCB (lines 6553-6558)
+8. ✅ Select-ImportOtherPath (lines 6583-6591)
+9. ✅ Suspend-MakeItSo (lines 6625-6630)
+10. ✅ Start-Script (lines 6672-6681)
+
+**Batch 8 Details (Functions 71-80):**
+
+1. ✅ Get-ImageInfo (lines 6710-6777)
+2. ✅ Select-DistributionPoints (lines 6803-6819)
+3. ✅ New-CMImagePackage (lines 6845-6886)
+4. ✅ Enable-ConfigMgrOptions (lines 6911-6988)
+5. ✅ Update-CMImage (lines 7013-7032)
+6. ✅ Invoke-UpdateTabOptions (lines 7056-7094)
+7. ✅ Invoke-MSUpdateItemDownload (lines 7127-7381)
+8. ✅ Invoke-MEMCMUpdatecatalog (lines 7421-7508)
+9. ✅ Invoke-MEMCMUpdateSupersedence (lines 7540-7605)
+10. ✅ Invoke-MISUpdates (lines 7608-7620)
+
+**Batch 9 Details (Functions 81-90):**
+
+1. ✅ Invoke-OSDCheck (lines 7623-7631)
+2. ✅ Set-ImageProperties (lines 7660-7727)
+3. ✅ Find-ConfigManager (lines 7754-7819)
+4. ✅ Set-ConfigMgr (lines 7845-7891)
+5. ✅ Import-CMModule (lines 7916-7930)
+6. ✅ Install-StartLayout (lines 7964-7997)
+7. ✅ Install-DefaultApplicationAssociations (lines 8029-8039)
+8. ✅ Select-DefaultApplicationAssociations (lines 8064-8080)
+9. ✅ Select-StartMenu (lines 8107-8147)
+10. ✅ Select-RegFiles (lines 8173-8196)
+
+**Batch 10 Details (Functions 91-100):**
+
+1. ✅ Install-RegistryFiles (lines 8244-8335)
+2. ✅ Invoke-DadJoke (lines 8367-8371)
+3. ✅ Copy-StageIsoMedia (lines 8405-8436)
+4. ✅ New-WindowsISO (lines 8471-8503)
+5. ✅ Copy-UpgradePackage (lines 8506-8517)
+6. ✅ Update-BootWIM (lines 8555-8623)
+7. ✅ Update-WinReWim (lines 8661-8668)
+8. ✅ Get-WinVersionNumber (lines 8709-8747)
+9. ✅ Select-ISODirectory (lines 8770-8780)
+10. ✅ Get-WindowsType (lines 8814-8820)
+
+**Batch 11 Details (Functions 101-105):**
+
+1. ✅ Test-IsoBinariesExist (lines 8855-8895)
+2. ✅ Invoke-ArchitectureCheck (lines 8924-8944)
+3. ✅ Invoke-2XXXPreReq (lines 8947-9036)
+4. ✅ Invoke-TextNotification (lines 9067-9070)
+5. ✅ Invoke-MakeItSo (lines 9136-9545)
 
 **Status Legend:**
 
@@ -601,25 +726,25 @@ This will be populated after Stage 1 when functions are reorganized into categor
 
 ## 9. NEXT STEPS
 
-**Current Status:** Stage 0, Batch 1 complete (10/105 functions extracted and validated)
+**Current Status:** ✅ Stage 0 COMPLETE (105/105 functions extracted and validated)
 
-**Next Action:** Begin Stage 0, Batch 2 (Extract & validate functions 11–20 in original line order)
+**Next Action:** Begin Stage 1 - Reorganize & Finalize
 
-**Stage 0, Batch 2 Entry Point:**
+**Stage 1 Entry Point:**
 
-```powershell
-# Stage 0: Extract & Intermediate Validation
-# Batch 2: Extract functions 11–20 from WWFunctions.ps1 (in original line order)
-pwsh -File tools/Extract-WWFunctions.ps1 -StartIndex 11 -Count 10
+1. Create category subdirectory structure under `Private/Functions/`
+2. Analyze extracted functions to determine category assignments
+3. Move functions from `Functions-Staging/` to category subdirectories
+4. Create final module loader with category-based import
+5. Test module import with final loader
+6. Create README-Functions.md documentation
 
-# Expected output:
-# - 10 functions extracted to WIMWitch-tNG/Private/Functions-Staging/
-# - All files pass syntax validation
-# - extraction-manifest.csv updated with Batch 2 entries
-# - Pause for review before Batch 3
-```
+**Stage 0 Summary:**
 
-**Remaining Batches:** 10 batches (95 functions) to complete Stage 0
+- ✅ All 105 functions extracted successfully
+- ✅ All functions passed syntax validation (0 errors)
+- ✅ extraction-manifest.csv complete with all function metadata
+- ✅ Functions preserved in original line order (dependency chain intact)
 
 **Questions for clarification (if any):**
 
