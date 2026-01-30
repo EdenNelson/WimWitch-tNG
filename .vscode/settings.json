@@ -1,4 +1,32 @@
 {
+    // =======================================================================================
+    // AI DEVELOPMENT REFERENCE: PROJECT_CONTEXT.md
+    // =======================================================================================
+    // IMPORTANT: When making ANY changes to this project, refer to:
+    //   Location: /Users/nelson/Documents/GitHub/WimWitch-tNG/PROJECT_CONTEXT.md
+    //
+    // This file contains:
+    // - Project architecture and design patterns
+    // - Coding standards and best practices
+    // - File structure and critical functions
+    // - Common workflows for adding features
+    // - Testing guidelines and maintenance procedures
+    //
+    // Key sections for developers:
+    // 1. "Coding Standards" - PowerShell conventions, naming, documentation
+    // 2. "Critical Functions" - Invoke-WimWitchTng, Invoke-MakeItSo, Update-Log
+    // 3. "Common Workflows" - Adding features, updating for new Windows versions
+    // 4. "File Structure" - Understanding Private/WWFunctions.ps1 organization
+    //
+    // CRITICAL CODING RULES:
+    // - Use full cmdlet names (no aliases)
+    // - All functions need comment-based help (SYNOPSIS, DESCRIPTION, PARAMETER, EXAMPLE, NOTES, OUTPUTS)
+    // - Author: "Author: Eden Nelson" in all .NOTES sections
+    // - Never modify SIG blocks (cryptographic signatures)
+    // - Use Update-Log function for all logging (NOT Write-Host)
+    // - Verb-Noun naming: Get-, Set-, Test-, Invoke-, Install-, Remove-, etc.
+    // =======================================================================================
+
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
     "editor.insertSpaces": true,

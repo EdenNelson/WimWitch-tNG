@@ -1,0 +1,126 @@
+{
+  "metadata": {
+    "description": "AppX exclusion rules - packages that MUST NOT be included in safe-to-remove lists",
+    "version": "1.0",
+    "lastUpdated": "2026-01-19",
+    "author": "Eden Nelson [edennelson]",
+    "codeOrigin": "Generated with GitHub Copilot AI assistance and reviewed by author. Disclosed in interest of transparency.",
+    "usage": "Referenced by .github/prompts/process-appxData.prompt.md for AI processing"
+  },
+
+  "neverIncludeInRemovalList": [
+    "Microsoft\\.WindowsAppRuntime\\.",
+    "Microsoft\\.NET\\.Native\\.",
+    "Microsoft\\.VCLibs\\.",
+    "Microsoft\\.UI\\.Xaml\\.",
+    "Microsoft\\.WidgetsPlatformRuntime",
+    "Microsoft\\.Windows\\.ShellExperienceHost",
+    "Microsoft\\.Windows\\.StartMenuExperienceHost",
+    "Microsoft\\.Windows\\.CloudExperienceHost",
+    "Microsoft\\.Windows\\.ContentDeliveryManager",
+    "MicrosoftWindows\\.Client\\.",
+    "Microsoft\\.AAD\\.BrokerPlugin",
+    "Microsoft\\.SecHealthUI",
+    "Microsoft\\.LockApp",
+    "Microsoft\\.CredDialogHost",
+    "Microsoft\\.MicrosoftEdge",
+    "Microsoft\\.Windows\\.ParentalControls",
+    "Microsoft\\.BioEnrollment",
+    "MSTeams",
+    "Microsoft\\.OutlookForWindows"
+  ],
+
+  "categoryPatterns": {
+    "Entertainment": {
+      "description": "Games, media apps, entertainment services",
+      "patterns": [
+        "Clipchamp\\.",
+        "Microsoft\\.MicrosoftSolitaireCollection",
+        "Microsoft\\.ZuneMusic",
+        "Microsoft\\.ZuneVideo",
+        "Microsoft\\.GamingApp",
+        "Microsoft\\.Xbox",
+        "Microsoft\\.GetStarted",
+        "SpotifyAB\\.SpotifyMusic"
+      ]
+    },
+    "Information": {
+      "description": "News, weather, search services",
+      "patterns": [
+        "Microsoft\\.BingNews",
+        "Microsoft\\.BingWeather",
+        "Microsoft\\.BingSearch",
+        "Microsoft\\.BingFinance",
+        "Microsoft\\.BingSports"
+      ]
+    },
+    "Utilities": {
+      "description": "Productivity tools and utilities",
+      "patterns": [
+        "Microsoft\\.Paint",
+        "Microsoft\\.WindowsNotepad",
+        "Microsoft\\.Todos",
+        "Microsoft\\.Windows\\.Photos",
+        "Microsoft\\.ScreenSketch",
+        "Microsoft\\.QuickAssist",
+        "Microsoft\\.GetHelp",
+        "Microsoft\\.WindowsFeedbackHub",
+        "Microsoft\\.People",
+        "Microsoft\\.WindowsMaps",
+        "Microsoft\\.WindowsAlarms",
+        "Microsoft\\.WindowsCalculator",
+        "Microsoft\\.WindowsCamera",
+        "Microsoft\\.WindowsSoundRecorder",
+        "Microsoft\\.PowerAutomateDesktop"
+      ]
+    },
+    "Store_Services": {
+      "description": "Microsoft Store and related services",
+      "patterns": [
+        "Microsoft\\.StorePurchaseApp",
+        "Microsoft\\.WindowsStore",
+        "Microsoft\\.DesktopAppInstaller",
+        "Microsoft\\.MicrosoftOfficeHub",
+        "Microsoft\\.Office\\.OneNote",
+        "Microsoft\\.YourPhone",
+        "Microsoft\\.Windows\\.DevHome",
+        "Microsoft\\.OneDrive"
+      ]
+    },
+    "Codecs_Extensions": {
+      "description": "Video and image codecs, file extensions",
+      "patterns": [
+        ".*VideoExtension",
+        ".*ImageExtension",
+        "Microsoft\\.AV1VideoExtension",
+        "Microsoft\\.HEIFImageExtension",
+        "Microsoft\\.HEVCVideoExtension",
+        "Microsoft\\.MPEG2VideoExtension",
+        "Microsoft\\.VP9VideoExtension",
+        "Microsoft\\.WebMediaExtensions",
+        "Microsoft\\.WebpImageExtension",
+        "Microsoft\\.RawImageExtension"
+      ]
+    }
+  },
+
+  "versionOverrides": {
+    "Win11-25H2": {
+      "description": "Windows 11 25H2 specific packages to exclude",
+      "neverIncludeInRemovalList": [
+        "Microsoft\\.Windows\\.Ai\\.Copilot\\.Provider"
+      ]
+    },
+    "Win11-24H2": {
+      "description": "Windows 11 24H2 specific packages to exclude",
+      "neverIncludeInRemovalList": []
+    }
+  },
+
+  "notes": {
+    "usage": "AI agent should match package names against neverIncludeInRemovalList patterns. If ANY pattern matches, package MUST NOT be included in safe-to-remove list.",
+    "regex": "All patterns are regex. Use case-insensitive matching.",
+    "categories": "categoryPatterns are hints for AI categorization, not exclusions. Packages matching these CAN be included in safe-to-remove list.",
+    "maintenance": "Update neverIncludeInRemovalList when new system-critical packages are discovered. Test changes carefully."
+  }
+}

@@ -4,3 +4,7 @@ Output/
 scratch/
 
 testResults.xml
+
+# AppX raw data files (intermediate processing files)
+tools/appxData/*.psd1
+tools/appxData/*.xml
