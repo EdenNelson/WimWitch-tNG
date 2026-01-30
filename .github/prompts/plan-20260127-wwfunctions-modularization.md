@@ -535,25 +535,37 @@ If significant issues arise during Stage 1–2:
 
 ## 8. PROGRESS TRACKER
 
-| # | Category | Functions | Status | Extracted | Validated | Notes |
-|---|----------|-----------|--------|-----------|-----------|-------|
-| 1 | Form & UI Controls | 21 | ⏳ NOT STARTED | 0/21 | 0/21 | — |
-| 2 | Administrative & Validation | 5 | ⏳ NOT STARTED | 0/5 | 0/5 | — |
-| 3 | Configuration Management | 4 | ⏳ NOT STARTED | 0/4 | 0/4 | — |
-| 4 | Logging & Output | 4 | ⏳ NOT STARTED | 0/4 | 0/4 | — |
-| 5 | WIM Operations | 4 | ⏳ NOT STARTED | 0/4 | 0/4 | — |
-| 6 | Driver Management | 3 | ⏳ NOT STARTED | 0/3 | 0/3 | — |
-| 7 | Windows Update Management | 13 | ⏳ NOT STARTED | 0/13 | 0/13 | — |
-| 8 | AppX Package Management | 2 | ⏳ NOT STARTED | 0/2 | 0/2 | — |
-| 9 | Windows Autopilot | 4 | ⏳ NOT STARTED | 0/4 | 0/4 | — |
-| 10 | ISO & Media Creation | 5 | ⏳ NOT STARTED | 0/5 | 0/5 | — |
-| 11 | .NET & OneDrive | 5 | ⏳ NOT STARTED | 0/5 | 0/5 | — |
-| 12 | Language Packs & FODs | 10 | ⏳ NOT STARTED | 0/10 | 0/10 | — |
-| 13 | ConfigMgr Integration | 13 | ⏳ NOT STARTED | 0/13 | 0/13 | — |
-| 14 | Registry & Customization | 6 | ⏳ NOT STARTED | 0/6 | 0/6 | — |
-| 15 | Boot WIM & WinRE | 2 | ⏳ NOT STARTED | 0/2 | 0/2 | — |
-| 16 | Utility & Orchestration | 6 | ⏳ NOT STARTED | 0/6 | 0/6 | — |
-| | **TOTALS** | **103** | | **0/103** | **0/103** | |
+### Stage 0: Sequential Extraction Progress
+
+**IMPORTANT:** AST analysis found **105 functions** (not 103 as originally estimated).
+
+| Batch | Function Range | Status         | Extracted | Validated | Completed  |
+| ----- | -------------- | -------------- | --------- | --------- | ---------- |
+| 1     | 1-10           | ✅ COMPLETE    | 10/10     | 10/10     | 2026-01-29 |
+| 2     | 11-20          | ⏳ NOT STARTED | 0/10      | 0/10      | —          |
+| 3     | 21-30          | ⏳ NOT STARTED | 0/10      | 0/10      | —          |
+| 4     | 31-40          | ⏳ NOT STARTED | 0/10      | 0/10      | —          |
+| 5     | 41-50          | ⏳ NOT STARTED | 0/10      | 0/10      | —          |
+| 6     | 51-60          | ⏳ NOT STARTED | 0/10      | 0/10      | —          |
+| 7     | 61-70          | ⏳ NOT STARTED | 0/10      | 0/10      | —          |
+| 8     | 71-80          | ⏳ NOT STARTED | 0/10      | 0/10      | —          |
+| 9     | 81-90          | ⏳ NOT STARTED | 0/10      | 0/10      | —          |
+| 10    | 91-100         | ⏳ NOT STARTED | 0/10      | 0/10      | —          |
+| 11    | 101-105        | ⏳ NOT STARTED | 0/5       | 0/5       | —          |
+|       | **TOTALS**     |                | **10/105**| **10/105**|            |
+
+**Batch 1 Details (Functions 1-10):**
+
+1. ✅ Get-FormVariables (lines 24-28)
+2. ✅ Test-Admin (lines 56-66)
+3. ✅ Convert-ConfigMgrXmlToPsd1 (lines 100-178)
+4. ✅ Select-MountDir (lines 232-254)
+5. ✅ Select-SourceWIM (lines 285-326)
+6. ✅ Import-WimInfo (lines 372-417)
+7. ✅ Select-JSONFile (lines 441-452)
+8. ✅ Invoke-ParseJSON (lines 486-502)
+9. ✅ Select-DriverSource (lines 555-563)
+10. ✅ Select-TargetDir (lines 587-595)
 
 **Status Legend:**
 
@@ -562,30 +574,52 @@ If significant issues arise during Stage 1–2:
 - ✅ COMPLETE – All functions extracted & validated
 - ⚠️ ISSUES – Syntax or validation failures (see Notes)
 
+### Category Distribution (Post-Stage 0)
+
+This will be populated after Stage 1 when functions are reorganized into categories.
+
+| #  | Category                    | Functions | Status     | Notes |
+| -- | --------------------------- | --------- | ---------- | ----- |
+| 1  | Form & UI Controls          | TBD       | ⏳ PENDING | —     |
+| 2  | Administrative & Validation | TBD       | ⏳ PENDING | —     |
+| 3  | Configuration Management    | TBD       | ⏳ PENDING | —     |
+| 4  | Logging & Output            | TBD       | ⏳ PENDING | —     |
+| 5  | WIM Operations              | TBD       | ⏳ PENDING | —     |
+| 6  | Driver Management           | TBD       | ⏳ PENDING | —     |
+| 7  | Windows Update Management   | TBD       | ⏳ PENDING | —     |
+| 8  | AppX Package Management     | TBD       | ⏳ PENDING | —     |
+| 9  | Windows Autopilot           | TBD       | ⏳ PENDING | —     |
+| 10 | ISO & Media Creation        | TBD       | ⏳ PENDING | —     |
+| 11 | .NET & OneDrive             | TBD       | ⏳ PENDING | —     |
+| 12 | Language Packs & FODs       | TBD       | ⏳ PENDING | —     |
+| 13 | ConfigMgr Integration       | TBD       | ⏳ PENDING | —     |
+| 14 | Registry & Customization    | TBD       | ⏳ PENDING | —     |
+| 15 | Boot WIM & WinRE            | TBD       | ⏳ PENDING | —     |
+| 16 | Utility & Orchestration     | TBD       | ⏳ PENDING | —     |
+
 ---
 
 ## 9. NEXT STEPS
 
-1. **Review this plan** for completeness and feasibility
-2. **Approve or request changes** (max 2 clarifications per governance)
-3. **Upon approval:** Begin Stage 0, Batch 1 (Extract & validate functions 1–10 in original line order)
+**Current Status:** Stage 0, Batch 1 complete (10/105 functions extracted and validated)
 
-**Stage 0, Batch 1 Entry Point (Upon Approval):**
+**Next Action:** Begin Stage 0, Batch 2 (Extract & validate functions 11–20 in original line order)
+
+**Stage 0, Batch 2 Entry Point:**
 
 ```powershell
 # Stage 0: Extract & Intermediate Validation
-# Batch 1: Extract functions 1–10 from WWFunctions.ps1 (in original line order)
-# - Use extraction methodology (§3.2)
-# - Validate each file (syntax, help blocks)
-# - Update Progress Tracker
-# - Pause for review before Batch 2
-#
-# Once all 103 functions extracted in original order:
-# - Create temporary loader (Private/Functions-Staging.psm1) with original-order dot-sourcing
-# - Test: Import-Module with temporary loader
-# - If successful → Proceed to Stage 1
-# - If fails → Debug and investigate missing dependencies
+# Batch 2: Extract functions 11–20 from WWFunctions.ps1 (in original line order)
+pwsh -File tools/Extract-WWFunctions.ps1 -StartIndex 11 -Count 10
+
+# Expected output:
+# - 10 functions extracted to WIMWitch-tNG/Private/Functions-Staging/
+# - All files pass syntax validation
+# - extraction-manifest.csv updated with Batch 2 entries
+# - Pause for review before Batch 3
 ```
+
+**Remaining Batches:** 10 batches (95 functions) to complete Stage 0
 
 **Questions for clarification (if any):**
 
