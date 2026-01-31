@@ -31,6 +31,7 @@ This document provides comprehensive context for AI-assisted development, mainte
 
 **Name:** WIMWitch-tNG (the Next Generation)
 **Type:** PowerShell Module & GUI Application
+**Compatibility:** PowerShell 5.1 compatible
 **Purpose:** Windows installation image (WIM file) customization toolkit
 **Original Creator:** Donna Ryan (TheNotoriousDRR)
 **Primary Authors:** Alex Laurie, Donna Ryan
@@ -650,6 +651,59 @@ All `Select-*` functions display dialogs and return user selections:
 
 ## Common Workflows
 
+### Pre-Work: Code Ingestion Preparation
+
+**CRITICAL:** Before reading, analyzing, or modifying PowerShell files in this project, remove Authenticode signature blocks to reduce context pollution and prevent structural errors.
+
+**Why:** Signature blocks add ~168 lines of base64-encoded data per file. With 100+ signed files, this creates ~20,000 lines of noise that:
+
+- Wastes token budget during ingestion
+- Obscures actual code structure
+- Makes it harder to detect missing closing braces and syntax errors
+- Provides no value for analysis or editing
+
+**When to Run:**
+
+- First time working with the codebase
+- After pulling updates that may include signed files
+- Before major refactoring or analysis work
+- When encountering import errors (missing closing braces often hidden by signatures)
+
+**How to Run:**
+
+```powershell
+# Remove from all project files (excludes /bin directory)
+./tools/Remove-SignatureBlocks.ps1
+
+# Test against 1 file first with backup
+./tools/Remove-SignatureBlocks.ps1 -First 1 -Backup -Verbose
+
+# Interactive mode (confirm each file)
+./tools/Remove-SignatureBlocks.ps1 -Interactive
+
+# Preview changes without modifying
+./tools/Remove-SignatureBlocks.ps1 -WhatIf
+```
+
+**Location:** `tools/Remove-SignatureBlocks.ps1`
+
+**Behavior:**
+
+- Detects standard Authenticode signature blocks (SIG # Begin/End markers)
+- Removes signature cleanly while preserving all code
+- Automatically excludes `/bin` directory (ConfigMgr binaries with non-standard signatures)
+- Optional backup creation (`.bak` files)
+- Supports interactive confirmation or batch processing
+
+**Post-Removal:**
+
+- Files remain fully functional
+- Module imports work correctly
+- Code is easier to analyze and modify
+- Re-signing can be done later if needed
+
+---
+
 ### Adding a New Feature
 
 1. **Determine Scope**
@@ -892,6 +946,88 @@ Before releasing changes:
 
 ## Maintenance Tasks
 
+### Encoding and Line Ending Validation
+
+**Command:** `/encoding`
+
+**Purpose:** Verify and optionally correct file encoding and line endings for PowerShell 5.1 compatibility.
+
+**Trigger:** Use this command to:
+
+- Verify all PowerShell files have correct CRLF line endings and UTF-8 encoding (PowerShell 5.1 requirement)
+- Fix encoding issues before committing changes
+- Validate files after importing from other projects or platforms
+
+**Decision Logic:**
+
+Per [STANDARDS_POWERSHELL.md](STANDARDS_POWERSHELL.md) and PROJECT_CONTEXT.md:
+
+- **PowerShell 5.1 compatible = CRLF (`\r\n`) + UTF-8 without BOM**
+- Check PROJECT_CONTEXT.md line 34: "Compatibility: PowerShell 5.1 compatible"
+- Apply CRLF to all `.ps1`, `.psm1`, `.psd1` files in this project
+
+**Verification Routine:**
+
+```powershell
+# Check encoding and line endings for all PowerShell files
+Get-ChildItem -Path . -Recurse -Include *.ps1,*.psm1,*.psd1 -Exclude build/* |
+    ForEach-Object {
+        $content = Get-Content -Path $_.FullName -Raw
+        $hasCRLF = $content -match "`r`n"
+        $hasLFOnly = ($content -match "`n") -and -not ($content -match "`r`n")
+
+        [PSCustomObject]@{
+            File = $_.FullName
+            LineEnding = if ($hasCRLF) { 'CRLF' } elseif ($hasLFOnly) { 'LF' } else { 'Unknown' }
+            NeedsConversion = $hasLFOnly
+        }
+    } | Where-Object { $_.NeedsConversion } | Format-Table -AutoSize
+```
+
+**Correction Routine:**
+
+```powershell
+# Convert all PowerShell files to CRLF + UTF-8 without BOM
+Get-ChildItem -Path . -Recurse -Include *.ps1,*.psm1,*.psd1 -Exclude build/* |
+    ForEach-Object {
+        $content = Get-Content -Path $_.FullName -Raw
+
+        # Skip if already CRLF
+        if ($content -match "`r`n") {
+            Write-Host "✓ $($_.Name) already CRLF" -ForegroundColor Green
+            return
+        }
+
+        # Convert LF to CRLF
+        $content = $content -replace "`n", "`r`n"
+
+        # Write with UTF-8 without BOM
+        $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+        [System.IO.File]::WriteAllText($_.FullName, $content, $utf8NoBom)
+
+        Write-Host "✓ Converted $($_.Name) to CRLF" -ForegroundColor Yellow
+    }
+```
+
+**Pre-Flight Check (Before Any PowerShell File Edit):**
+
+Before modifying `.ps1`/`.psm1`/`.psd1` files, agents MUST:
+
+1. ✅ Check PROJECT_CONTEXT.md for PowerShell version requirement (line 34: PowerShell 5.1 compatible)
+2. ✅ Confirm encoding requirement: CRLF + UTF-8 without BOM
+3. ✅ Apply correct encoding when creating or modifying files
+4. ✅ Verify file encoding after making changes
+
+**Adding CRLF Marker to New Files:**
+
+For new PowerShell files or files without the marker, add at the top:
+
+```powershell
+# REQUIRES-CRLF: PowerShell 5.1 (GPO/DSC)
+```
+
+---
+
 ### Regular Maintenance
 
 **Monthly:**
@@ -900,6 +1036,7 @@ Before releasing changes:
 - [ ] Check for module updates (OSDSUS, OSDUpdate)
 - [ ] Review and close GitHub issues
 - [ ] Update documentation for changes
+- [ ] Run `/encoding` to verify all PowerShell files have correct CRLF encoding
 
 **Quarterly:**
 

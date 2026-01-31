@@ -13,44 +13,53 @@ Authoritative rules for AI-generated changes in this repository. Apply these ins
 - Keep outputs concise; avoid re-quoting large prior sections—link or summarize instead.
 - Do not modify digital signature blocks.
 
-## File Encoding and Line Endings (CRITICAL — macOS/Linux → Windows Compatibility)
+## File Encoding and Line Endings (CRITICAL — Idempotency by Default)
 
-**MANDATORY:** All PowerShell files (\*.ps1, \*.psm1, \*.psd1) **MUST** be Windows-compatible when created or modified on macOS/Linux systems.
+**DEFAULT:** PowerShell files (\*.ps1, \*.psm1, \*.psd1) **must use LF** (`\n`) to preserve cross-platform idempotency.
 
-### Core Requirements
+**CRLF is required only when explicitly stated or when legacy Windows PowerShell 5.1 compatibility is required** (e.g., Group Policy startup/shutdown scripts, DSC).
 
-- **Line Endings:** Use CRLF (`\r\n`, Windows-style), NOT LF (`\n`, Unix-style).
+### Default Requirements (Idempotent Baseline)
+
+- **Line Endings:** Use LF (`\n`, Unix-style).
 - **Encoding:** UTF-8 without BOM (Byte Order Mark) is preferred; UTF-8 with BOM is acceptable.
 - **Path Separators:** Must use backslash (`\`) for hardcoded Windows paths; avoid forward slash (`/`) in hardcoded paths. (Use `Join-Path` instead; see "Path Construction Details".)
 - **File Permissions:** Ensure no executable bit (`+x`) is set on `.ps1` files (not applicable to Windows execution, but prevents confusion).
-- **EOL and BOM Detection:** In VS Code, verify the status bar (bottom right) shows `CRLF` and `UTF-8` (not `UTF-8 with BOM` unless required).
+
+### When CRLF Is Required (Legacy 5.1 Compatibility)
+
+Use CRLF (`\r\n`) **only** when:
+
+- A script is explicitly labeled as requiring legacy Windows PowerShell 5.1 compatibility.
+- The script is intended for **Group Policy** startup/shutdown execution or **DSC** contexts.
+- The user or project context explicitly requires CRLF.
+
+### CRLF Marker Convention
+
+When CRLF is required, add a clear header marker:
+
+```powershell
+# REQUIRES-CRLF: PowerShell 5.1 (GPO/DSC)
+```
 
 ### Rationale
 
-PowerShell scripts execute on Windows servers and require **strict Windows file format** for proper execution in automated orchestration (DSC, Desired State Configuration; Group Policy startup/shutdown scripts; CI/CD pipelines; remote PowerShell execution via WinRM).
+PowerShell 7+ handles both LF and CRLF across platforms. **Idempotency by default** avoids cross-platform encoding side effects. **CRLF is reserved for explicit legacy Windows PowerShell 5.1 requirements** (Group Policy, DSC).
 
-### Enforcement for AI Agents
+### Agent Decision Logic
 
-**If you are an AI agent running on macOS or Linux:**
+**When generating or modifying PowerShell files:**
 
-1. **After generating or modifying a PowerShell file**, explicitly convert line endings to CRLF before finalizing the response or saving the file.
-2. **Do not assume** the consumer's system will auto-convert. You are responsible.
-3. **If you attempt to detect or fix issues** (e.g., running `dos2unix`, `unix2dos`, or similar commands):
-   - **Check your current operating system first** using `$PSVersionTable.Platform` or equivalent platform-detection in your script.
-   - **If running on Windows:** Stop immediately. The governance rule should have already been applied by the macOS/Linux agent that created the file. Do not re-process.
-   - **If running on macOS/Linux:** Proceed with conversion using platform-appropriate tools.
+1. **Check for CRLF trigger:**
+   - Is there a `# REQUIRES-CRLF:` marker in the script header?
+   - Does PROJECT_CONTEXT.md explicitly state PowerShell 5.1 compatibility is required?
+   - Did the user explicitly request CRLF or legacy 5.1 compatibility?
 
-**If you are an AI agent running on Windows:**
+2. **Apply line endings:**
+   - **If any trigger is present:** Use CRLF (`\r\n`)
+   - **If no trigger is present:** Use LF (`\n`) (default)
 
-- You must still conform to CRLF and UTF-8 encoding, but the file system will typically enforce this automatically.
-- Do not run Unix-style line-ending conversion tools. If the file already has CRLF, leave it as-is.
-- If you encounter a PowerShell file with LF line endings on a Windows system, this indicates the file was created by a non-compliant macOS/Linux agent and should be rejected or escalated for re-generation on the correct platform.
-
-### Detection in VS Code
-
-- Status bar (bottom right) shows `CRLF` for line endings and `UTF-8` for encoding.
-- If it shows `LF`, click on the status bar and select "CRLF" to convert.
-- Save the file after conversion.
+3. **Encoding:** Always UTF-8 without BOM (UTF-8 with BOM is acceptable if required by context).
 
 ## Logging and Messaging
 
@@ -137,6 +146,7 @@ try {
 - Use 4 spaces for indentation (Standard PSScriptAnalyzer compliance).
 - Organize with #region / #endregion when it improves readability.
 - Region-based structure: in linear scripts (without formal begin/process/end blocks), explicitly demarcate phases with #region Begin (or Setup), #region Process (or Logic/Main), and #region End (or Cleanup) to preserve architectural parity with advanced functions; nesting regions is allowed when it improves clarity.
+- **String Literals — ASCII Hyphens Only:** All PowerShell string literals must use standard ASCII hyphens (`-`, U+002D) instead of em dashes (`—`, U+2014). This includes double-quoted strings, single-quoted strings, and here-strings. Never use em dash characters in strings; they create encoding inconsistencies across macOS, Linux, and Windows platforms and introduce parsing ambiguity in automation systems. (See [ADR-0014](.github/adr/0014-ascii-hyphens-powershell-strings.md) for rationale.)
 
 ## Script Structure Decision Tree
 

@@ -12,7 +12,7 @@
 - STANDARDS_CORE.md, STANDARDS_BASH.md, STANDARDS_POWERSHELL.md, STANDARDS_ORCHESTRATION.md
 - SPEC_PROTOCOL.md, CONSENT_CHECKLIST.md
 - MIGRATION_TEMPLATE.md, GOVERNANCE_MAINTENANCE.md, ADR_TEMPLATE.md
-- .cursorrules
+- .github/copilot-instructions.md
 
 **The Rule:**
 
@@ -41,6 +41,56 @@
 
 - Same requests **IF** in the AgentGov repository (subject to Spec Protocol and Consent rules).
 - Modifying project-specific files (not governance artifacts) in consumer projects → **ALLOWED**.
+
+---
+
+## Automatic Governance Hard Gate Detection
+
+**CRITICAL:** This rule enforces SPEC_PROTOCOL § 2.1–2.3 automatically, without requiring `/gov` or manual invocation.
+
+### Rule: Before Any Governance File Modification
+
+**IF** you are about to modify, create, or delete ANY of these files:
+
+- PERSONA.md, PERSONA_SCRIBE.md
+- STANDARDS_CORE.md, STANDARDS_BASH.md, STANDARDS_POWERSHELL.md, STANDARDS_ORCHESTRATION.md
+- SPEC_PROTOCOL.md, CONSENT_CHECKLIST.md, GOVERNANCE_MAINTENANCE.md, MIGRATION_TEMPLATE.md, ADR_TEMPLATE.md
+- .github/adr/*.md (any ADR)
+- .github/copilot-instructions.md
+
+**THEN** you MUST immediately:
+
+1. **Stop.** Do not proceed with the modification.
+2. **Check:** Is there an approved persisted plan in `.github/prompts/plan-*.md` that covers this change?
+   - **If NO plan exists:** Go to Thinking Phase (below)
+   - **If plan exists but NOT approved:** Wait for explicit approval (see Approval Pattern in SPEC_PROTOCOL § 2.3)
+   - **If plan IS approved:** Proceed to Coding Phase (below)
+
+### Thinking Phase (If No Plan Exists)
+
+1. Draft a plan file: `.github/prompts/plan-<YYYYMMDD>-<topic>.prompt.md`
+2. Include: Problem Statement, Analysis & Assessment, Decision, Stages with checkpoints, Consent Gate
+3. Save the plan to the repository (persist it)
+4. Respond to the user: "I've drafted a plan for this change. Please review at `.github/prompts/plan-<YYYYMMDD>-<topic>.prompt.md` and confirm approval."
+5. **STOP.** Wait for explicit approval before proceeding.
+
+### Coding Phase (If Plan Is Approved)
+
+1. Read the approved plan artifact completely
+2. Verify understanding of Problem Statement, Analysis, and Stages
+3. Confirm approval is recorded in the plan (Consent Gate section)
+4. Execute implementation following the plan stages in order
+5. Link commits back to the plan artifact
+6. Validate all checkpoints before declaring work complete
+
+### No Exemptions
+
+- Typos in governance files: Require a plan
+- Comment improvements: Require a plan
+- Link fixes: Require a plan
+- Small formatting changes: Require a plan
+
+**Rationale:** Governance changes are never "small" — they affect the framework and all downstream consumers. All modifications must be auditable and durable.
 
 ---
 
@@ -91,6 +141,7 @@
 ## Dynamic Chain-Load Architecture (Standards)
 
 - Initial load (base): PERSONA.md, PROJECT_CONTEXT.md, SPEC_PROTOCOL.md, detected language standards (e.g., STANDARDS_POWERSHELL.md, STANDARDS_BASH.md)
+- Language standards load based on verified file presence using file_search (`**/*.ps1`, `**/*.sh`, `**/*.py`)
 - Standards declare `DO NOT LOAD UNTIL` and `CHAINS TO`; chains activate only when conditions are met
 - Splits: large standards may split into focused files; chains update accordingly
 - Goal: minimize context, load only what work patterns require
@@ -107,9 +158,9 @@
 2. LOAD: PROJECT_CONTEXT.md (project scope)
 3. LOAD: SPEC_PROTOCOL.md (planning workflow)
 4. LOAD: STANDARDS_CORE.md (universal principles)
-5. LOAD: Language standards conditionally:
-   - STANDARDS_POWERSHELL.md (if PowerShell detected)
-   - STANDARDS_BASH.md (if Bash detected)
+5. LOAD: Language standards conditionally based on verified file presence:
+   - STANDARDS_POWERSHELL.md (if PowerShell files detected via file_search)
+   - STANDARDS_BASH.md (if Bash files detected via file_search)
 
 **Behavior:** Full implementation mode with all governance and standards active.
 
@@ -117,18 +168,37 @@
 
 **Trigger:** User types `/context`.
 
-**Output:** Report which persona you are first. then governance files are currently loaded:
+**Behavior:**
 
-- Active persona: Architect (PERSONA.md) or Scribe (PERSONA_SCRIBE.md)
-- SPEC_PROTOCOL.md loaded? (yes/no)
-- STANDARDS_CORE.md loaded? (yes/no)
-- Language standards loaded? (STANDARDS_POWERSHELL.md, STANDARDS_BASH.md) (yes/no)
+1. **Verify Language File Presence:** Run file_search for language-specific patterns:
+   - PowerShell: `**/*.ps1`, `**/*.psm1`, `**/*.psd1`
+   - Bash: `**/*.sh`
+   - Python: `**/*.py`
+2. **Report Findings:** Report which persona you are first, then governance files are currently loaded:
+   - Active persona: Architect (PERSONA.md) or Scribe (PERSONA_SCRIBE.md)
+   - SPEC_PROTOCOL.md loaded? (yes/no)
+   - STANDARDS_CORE.md loaded? (yes/no)
+   - Language standards detected and loaded:
+     - PowerShell: ✓ Detected (N files) / ✗ Not detected
+     - Bash: ✓ Detected (N files) / ✗ Not detected
+     - Python: ✓ Detected (N files) / ✗ Not detected
+3. **Transparent Assumptions:** If language standards are loaded without code presence (e.g., for governance review), state: "STANDARDS_[LANG].md loaded for governance context; no code files detected."
 
-**Manual Fallback:** If context is missing (e.g., .cursorrules not auto-loaded), explicitly load .cursorrules, then rerun `/context` to confirm.
+**Manual Fallback:** If context is missing (e.g., .github/copilot-instructions.md not auto-loaded), explicitly load .github/copilot-instructions.md, then rerun `/context` to confirm.
 
 ## Command: /gov (Governance Work Mode)
 
-**Scope:** Work on governance framework (PERSONA, STANDARDS_*, SPEC_PROTOCOL, CONSENT_CHECKLIST, .cursorrules)
+**🛑 REPOSITORY CHECK (REQUIRED):**
+
+**BEFORE executing any governance work, verify the repository context:**
+
+- **IF** the repository is **NOT** "AgentGov": **IMMEDIATELY REFUSE** and respond:
+  - "I cannot run governance workflows in consumer projects. These are read-only governance imports from AgentGov. All governance changes must be made in the AgentGov repository."
+  - **Do not proceed.** Do not ask for confirmation.
+
+- **IF** the repository **IS** "AgentGov": Proceed with governance work below.
+
+**Scope:** Work on governance framework (PERSONA, STANDARDS_*, SPEC_PROTOCOL, CONSENT_CHECKLIST, .github/copilot-instructions.md)
 
 **Pre-Flight:** Ensure a plan exists and is approved for significant changes (SPEC_PROTOCOL). Be strict on Markdown lint.
 

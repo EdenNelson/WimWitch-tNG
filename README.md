@@ -6,6 +6,8 @@ _"Make it so." - Captain Jean-Luc Picard_
 
 This a forked version of WimWitch by Donna Ryan (TheNotoriousDRR) which was EOL'd in Jan 2023. This is an attempt to keep the tool alive and have the community be able to help maintain and add features to it.
 
+Tested with PowerShell 5.1.
+
 **About the Name:** The "tNG" (the Next Generation) suffix honors Donna Ryan's original Star Trek: The Next Generation theme. Like Captain Picard's Enterprise-D, this represents an evolution while staying true to the original mission.
 
 # Changelog

@@ -34,7 +34,7 @@ All markdown files must follow CommonMark specification. Key requirements:
 ### 1.4 File Boundaries (Governance Location)
 
 - Do not place governance rules in PROJECT_CONTEXT.md. That file is project-specific context only.
-- Canonical governance lives in: PERSONA.md / PERSONA_SCRIBE.md, STANDARDS_* files, SPEC_PROTOCOL.md, STANDARDS_ORCHESTRATION.md, CONSENT_CHECKLIST.md, .cursorrules, ADRs.
+- Canonical governance lives in: PERSONA.md / PERSONA_SCRIBE.md, STANDARDS_* files, SPEC_PROTOCOL.md, STANDARDS_ORCHESTRATION.md, CONSENT_CHECKLIST.md, .github/copilot-instructions.md, ADRs.
 - PROJECT_CONTEXT.md may link to governance files but must not define rules or workflows.
 
 ## 2. API & ENDPOINT ORCHESTRATION

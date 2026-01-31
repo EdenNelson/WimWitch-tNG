@@ -239,8 +239,8 @@ Create **one standard plan file** (`plan-*.md`) with:
 
 **Context Verification:**
 
-- Use the context verification command (see .cursorrules) to report currently loaded governance files: PERSONA or PERSONA_SCRIBE, SPEC_PROTOCOL, STANDARDS_*
-- If .cursorrules was not auto-loaded (e.g., workspace load issue), manually load .cursorrules then re-run context verification
+- Use the context verification command (see .github/copilot-instructions.md) to report currently loaded governance files: PERSONA or PERSONA_SCRIBE, SPEC_PROTOCOL, STANDARDS_*
+- If .github/copilot-instructions.md was not auto-loaded (e.g., workspace load issue), manually load .github/copilot-instructions.md then re-run context verification
 
 ---
 

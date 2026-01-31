@@ -73,7 +73,7 @@ $GovernanceFiles = @(
     'STANDARDS_POWERSHELL.md'
     'STANDARDS_ORCHESTRATION.md'
     'CONSENT_CHECKLIST.md'
-    '.cursorrules'
+    '.github/copilot-instructions.md'
 )
 
 # AgentGov repository configuration
@@ -85,6 +85,21 @@ $BaseUrl = "https://raw.githubusercontent.com/$AgentGovRepo/$AgentGovBranch"
 $ProjectRoot = $PSScriptRoot
 $TargetDir = $ProjectRoot
 $CacheDir = Join-Path -Path $ProjectRoot -ChildPath '.github' -AdditionalChildPath 'prompts', 'bootstrap-cache'
+
+# Deprecated file mappings (DeprecatedFile -> ReplacementFile)
+# Only remove deprecated file if replacement was successfully synced in current run
+# If Replacement is $null, deprecated file is removed unconditionally
+$DeprecatedFileMappings = @(
+    @{
+        Deprecated  = '.cursorrules'
+        Replacement = '.github/copilot-instructions.md'
+    }
+    # Add future deprecated files here:
+    # @{
+    #     Deprecated  = 'old-file.md'
+    #     Replacement = $null  # No replacement, just remove
+    # }
+)
 
 Write-Verbose -Message "Bootstrap initialization:"
 Write-Verbose -Message "  Project Root: $ProjectRoot"
@@ -247,9 +262,8 @@ function Sync-GovernanceFile {
 
     if ($LocalExists -and -not $Force) {
         $LocalHash = Get-FileHash256 -Path $TargetPath
-        $RemoteHash = Get-FileHash256 -Path ([IO.Path]::GetTempFileName()) # Compute hash of remote content
-
-        # Simpler approach: compute hash of downloaded content
+        
+        # Compute hash of downloaded content
         $TempFile = New-TemporaryFile -ErrorAction SilentlyContinue
         if ($TempFile) {
             try {
@@ -348,6 +362,52 @@ function Test-GovernanceFiles {
     }
 }
 
+function Remove-DeprecatedFile {
+    <#
+    .SYNOPSIS
+    Removes deprecated governance files after successful migration.
+
+    .PARAMETER DeprecatedPath
+    Path to the deprecated file.
+
+    .PARAMETER ReplacementPath
+    Path to the replacement file (must exist before removing deprecated file).
+
+    .OUTPUTS
+    [bool] $true if file was removed or didn't exist; $false if removal failed.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$DeprecatedPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ReplacementPath
+    )
+
+    # Safety check: only remove if replacement exists
+    if (-not (Test-Path -Path $ReplacementPath)) {
+        Write-Verbose -Message "Skipping removal of $DeprecatedPath - replacement file $ReplacementPath does not exist"
+        return $false
+    }
+
+    if (Test-Path -Path $DeprecatedPath) {
+        try {
+            Remove-Item -Path $DeprecatedPath -Force -ErrorAction Stop
+            Write-Verbose -Message "Removed deprecated file: $DeprecatedPath"
+            return $true
+        }
+        catch {
+            Write-Verbose -Message "Warning: Failed to remove deprecated file $DeprecatedPath. Error: $_"
+            return $false
+        }
+    }
+    else {
+        Write-Verbose -Message "Deprecated file $DeprecatedPath does not exist (already cleaned up)"
+        return $true
+    }
+}
+
 #endregion Functions
 
 #region Main
@@ -373,6 +433,41 @@ else {
     $Missing = $Verification.MissingFiles -join ', '
     Write-Verbose -Message "Warning: Missing governance files: $Missing"
     Write-Verbose -Message "Using cached versions from previous sync."
+}
+
+Write-Verbose -Message "=== Bootstrap Phase: Cleanup Deprecated Files ==="
+
+foreach ($Mapping in $DeprecatedFileMappings) {
+    $DeprecatedPath = Join-Path -Path $TargetDir -ChildPath $Mapping.Deprecated
+    
+    # If no replacement specified, remove unconditionally
+    if ([string]::IsNullOrEmpty($Mapping.Replacement)) {
+        if (Test-Path -Path $DeprecatedPath) {
+            try {
+                Remove-Item -Path $DeprecatedPath -Force -ErrorAction Stop
+                Write-Verbose -Message "Removed deprecated file (no replacement): $($Mapping.Deprecated)"
+            }
+            catch {
+                Write-Verbose -Message "Warning: Failed to remove deprecated file $($Mapping.Deprecated). Error: $_"
+            }
+        }
+        else {
+            Write-Verbose -Message "Deprecated file $($Mapping.Deprecated) does not exist (already cleaned up)"
+        }
+        continue
+    }
+    
+    # If replacement specified, only remove if replacement was synced
+    $ReplacementFileName = $Mapping.Replacement
+    $ReplacementResult = $SyncResults | Where-Object -FilterScript { $_.FileName -eq $ReplacementFileName }
+    
+    if ($ReplacementResult -and $ReplacementResult.Status -eq 'Synced') {
+        $ReplacementPath = Join-Path -Path $TargetDir -ChildPath $Mapping.Replacement
+        Remove-DeprecatedFile -DeprecatedPath $DeprecatedPath -ReplacementPath $ReplacementPath
+    }
+    else {
+        Write-Verbose -Message "Skipping $($Mapping.Deprecated) cleanup - $ReplacementFileName not synced in this run"
+    }
 }
 
 Write-Verbose -Message "=== Bootstrap Phase: Summary ==="
@@ -401,8 +496,8 @@ Write-Verbose -Message "=== Bootstrap Complete ==="
 # SIG # Begin signature block
 # MIIfCAYJKoZIhvcNAQcCoIIe+TCCHvUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUihQUJ1nAuoqdS3snPVBZB8JL
-# SLagghk5MIIGFDCCA/ygAwIBAgIQeiOu2lNplg+RyD5c9MfjPzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUriixvCgWTb6CY/tjGX/4ttrB
+# LvCgghk5MIIGFDCCA/ygAwIBAgIQeiOu2lNplg+RyD5c9MfjPzANBgkqhkiG9w0B
 # AQwFADBXMQswCQYDVQQGEwJHQjEYMBYGA1UEChMPU2VjdGlnbyBMaW1pdGVkMS4w
 # LAYDVQQDEyVTZWN0aWdvIFB1YmxpYyBUaW1lIFN0YW1waW5nIFJvb3QgUjQ2MB4X
 # DTIxMDMyMjAwMDAwMFoXDTM2MDMyMTIzNTk1OVowVTELMAkGA1UEBhMCR0IxGDAW
@@ -541,28 +636,28 @@ Write-Verbose -Message "=== Bootstrap Complete ==="
 # MRUwEwYKCZImiZPyLGQBGRYFaW50cmExDzANBgNVBAMTBkNUQS1DQQITXQAAAkSP
 # dub9u4IuqwADAAACRDAJBgUrDgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAA
 # oQKAADAZBgkqhkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4w
-# DAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0BCQQxFgQUj+MjIZICBXJ8CUDrTJ5jpwio
-# VzcwDQYJKoZIhvcNAQEBBQAEggEAQX7qyHeW3kyTdwsTXofabzc+UkK2AzAMNrnU
-# KiE+wjnkWFqT0vjGoNvXyFcucfSHheJDmpvIw0GGrYpbydGEWaRfpRnfNkTc+4Sa
-# WPrAc1Yp8iyZ+jSOv2QoW+A8HcNO2ltd3B3XK/ypUSd5Or16ROia16COr42wnY8F
-# UZKcKQze4MSmr4kYIW8xAXnqX1ahyt4N/pPjo1//3Pjv/pZ2WmNhQU/DmCZs6VFY
-# l5+HRb8UEUJYtuK4lM4OSxPejGy4cLN1Ql602TRtH6H5OAuVduQzB+DHoUBuOPL6
-# 62OCHjINMT3denSQhi1jZcGyADbND23Wj6LZqsi6eKqmbSjHfaGCAyMwggMfBgkq
+# DAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0BCQQxFgQUveiw2T8cUor3ZgOwh10psodS
+# 3jUwDQYJKoZIhvcNAQEBBQAEggEAz++CzJ+aeORtlgR07mXcBVh1MAkMUK7Rx1vP
+# 8vwIsPxeoEOeBIRikIKx44WLVKKNdrogAJ4zExlPoPlzSIynC3J6jvrCcFW/u0DR
+# +YVSrwzdsbGkbG5f251ke4QeXQyMZbuu9N97IIRYJWdsW9bSYPPJ8not5UHinDcs
+# H382hPrDqWAYnge37aPAo8NskWuI2XgRznSVDKiAl+XSuoXBRBZPBzwOAB/rOJKf
+# RtRClOUHEFcfL1IqlZTg0YloWVOo6INQ1vDjEVmmXQ5xew/ILz5i5BBNvuLkVKe7
+# BEhC6zTIOyWX98RNfbQHbiV+0izND3/XS669RHpTtoVG1FbI9qGCAyMwggMfBgkq
 # hkiG9w0BCQYxggMQMIIDDAIBATBqMFUxCzAJBgNVBAYTAkdCMRgwFgYDVQQKEw9T
 # ZWN0aWdvIExpbWl0ZWQxLDAqBgNVBAMTI1NlY3RpZ28gUHVibGljIFRpbWUgU3Rh
 # bXBpbmcgQ0EgUjM2AhEApCk7bh7d16c0CIetek63JDANBglghkgBZQMEAgIFAKB5
 # MBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTI2MDEz
-# MDAxNTQ1OFowPwYJKoZIhvcNAQkEMTIEMOaIKOdzGWhLly6b6+emZcI30VExBUdd
-# 0MG+4iREZkZ3opMLw1rHTvaZ8rSOi3bDEDANBgkqhkiG9w0BAQEFAASCAgBINAkM
-# /h2jszM0ekyqvLB4xr5eaLlYmk6xrjyIByo0Ed6vxZyj2yDAji/vXnmC9k46azFf
-# YUu7Ztt5W0q6enTgYNrzotUURztSSv1YCZI6xI69fA3EV/WLCn+8s/EVmI2Fxo78
-# ENX8KakNlk+f0Vivs4GDxPRxW7QBZaR8XB3cBRSY0bguW5bgTNEnhcr6noNzMnRV
-# OvLnVDm4jERJGyH7V0LXxdsZset+Q+S1Ht7i35G3wLXZimB/AXHZNybJE/VXn5//
-# 9xF/fRt2J6/45fS8vYbsJl7xtsatumPjPxVk6/CUpDjKaTN46EjT2RXvPo4ODvOV
-# wWvyH9Tuy1DZSCNFDLLnCQogFFO7EUxjKC+42ZsV1+o0F0YbmMrsQZrqIY8NUYxO
-# hri7+rw5u6s1ZAq271RxshPwUTl5x9Rdo66XhGq06phgWlgHBQ8OiTVD9Y0a82kV
-# BOAcV8wao32aQZjVhpKkyF+/mRK8NN8G8n+B4u9L/P2y98usCNfjKFCkwI+BYyn0
-# N4UJrmRRcIKAtVJJZShcMcheST6Ep0Ed80IHDvT6BU7daB8nQGdIQtHumYAmjLKn
-# F0/hSHOtoYYVjfaelMDcLJtQoa28tmA7G/UpwJ9vBHs8rMB7rzw7TrmLZw6fuC6o
-# 9PdHfLtRJgynsRSZc89nrY36UHj9VuzeNTl59A==
+# MDIzMjIyNVowPwYJKoZIhvcNAQkEMTIEMEHIyhqJT/Aq3LiIO+V22SAsO2kdT6LX
+# 5I+xoDip3bNSX+revOAaWZDArq7M49mfOTANBgkqhkiG9w0BAQEFAASCAgAA9VsX
+# ntd4K84kCpOUJb6MpH+yiZAVsPKFs7q5i5GDuy/C5rfAMczC7fbJ7aOxcFLF9sNu
+# zzh/iac6yVMh6x46DkMWjb+2CwV2TXiuFHZd6cZD6G+a2S72kVHjEVKD9QWwRBhQ
+# L2kJ/3qslbcPFS5M8xML5HYDcIk8tptKXg8Yn8ehZ0FVW6dBOjKMVTDvNehrzCvI
+# YuzTDi9TxrtRfEiU0N2CEdtRwVGcsLT116aR2DI76qF/CoKBZkJFkbhhm8JBxW43
+# RgtR+rH2r52/BMBdxraJ3Ef3psbTXHILH1sCpColael5z20xCzjBhGLvd/W3ihlc
+# 26r4YZ4xI1nVLJS3Bwx8unIgtKayu4qugQceSb2Vmsu3NH0h2k4EfyPIhoP+yMg9
+# OIomR1pjvckZzJ157TeulCC0eRKVX0UnJ4Jy76QwXketm2yqQIrOFRy2swCeYxqW
+# JcEgnefGwDva5igcF7seRtQzkWHrzi+B+aK+dwZMcV9AUB4dEhxuiJrpeGzevAj4
+# uhK8Fow06opiD8f9YZcKs3rAoGSsh7f1/9xsSXi/mB2j2dB518b4WqpT0nq5HwzB
+# 4pQPfvJNehqx9e6Xr0Uc0Y4dS0+vMW83D1SqBWjqIXq3bZxfKgdjgAPtY08Fd30h
+# pWG2j0W6sNLXEEWiZ+iH1VeZSFmxKDuJ+3T8cg==
 # SIG # End signature block

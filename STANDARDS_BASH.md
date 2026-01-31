@@ -14,6 +14,15 @@ set -euo pipefail
 IFS=$'\n\t'
 ```
 
+**Rationale:** Bash (4.x or later) is the standard for shell automation in this framework. These directives are mandatory because:
+
+- `set -e`: Exit on any error, preventing silent failures
+- `set -u`: Fail on undefined variables, catching typos and uninitialized vars
+- `set -o pipefail`: Catch errors in piped commands, not just the final command
+- `IFS=$'\n\t'`: Restrict word splitting to newlines and tabs, preventing word-splitting bugs
+
+This trades portability (POSIX sh compatibility) for safety and clarity. All shell automation in AgentGov targets Bash 4.x or later, available on macOS, Linux, and Windows (WSL, Git Bash, Cygwin).
+
 ### 1.2 Logic & Syntax
 
 - **Expansion:** Always quote variables (`"${VAR}"`) and use curly braces (`"${FILE_PATH}"`).
