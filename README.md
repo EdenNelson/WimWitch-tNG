@@ -2,7 +2,7 @@
 
 _"Make it so." - Captain Jean-Luc Picard_
 
-![WIMWITCHFK](https://i.imgur.com/WGNLA48.png)
+![WIMWITCHFK](logo.png)
 
 This a forked version of WimWitch by Donna Ryan (TheNotoriousDRR) which was EOL'd in Jan 2023. This is an attempt to keep the tool alive and have the community be able to help maintain and add features to it.
 
